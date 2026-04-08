@@ -19,7 +19,7 @@ export default function FinanceiroPage() {
         </div>
 
         {/* KPIs Column (Right) */}
-        <div className="lg:w-[200px] xl:w-64 shrink-0">
+        <div className="lg:w-96 xl:w-[420px] shrink-0">
           <FinancialKPIs />
         </div>
       </div>

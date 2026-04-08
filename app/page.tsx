@@ -108,7 +108,7 @@ export default function Dashboard() {
           {/* Settings content */}
           {showSettings && (
             <div className="border-t border-border/70 px-4 py-4 bg-slate-50/30">
-              <div className="grid gap-4 lg:grid-cols-4">
+              <div className="grid gap-4 lg:grid-cols-3">
                 {/* Parâmetros de Produção */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="text-xs font-bold text-slate-700 mb-3" style={{ fontFamily: 'var(--font-syne)' }}>
@@ -207,53 +207,6 @@ export default function Dashboard() {
                       onChange={(v) => setLocalCustos({ ...localCustos, outras_despesas: v })}
                       step="10000"
                     />
-                  </div>
-                </div>
-
-                {/* Resultado */}
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <h3 className="text-xs font-bold text-slate-700 mb-3" style={{ fontFamily: 'var(--font-syne)' }}>
-                    Resultado Estimado
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between py-1.5 border-b border-border">
-                      <span className="text-[11px] text-slate-500">Receita</span>
-                      <span className="text-xs font-semibold text-emerald-600">
-                        R$ {localCustos.receita_venda.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5 border-b border-border">
-                      <span className="text-[11px] text-slate-500">Custo Ração</span>
-                      <span className="text-xs font-semibold text-red-600">
-                        − R$ {localCustos.custo_racao.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between py-1.5 border-b border-border">
-                      <span className="text-[11px] text-slate-500">Outras Desp.</span>
-                      <span className="text-xs font-semibold text-red-600">
-                        − R$ {localCustos.outras_despesas.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between pt-1.5">
-                      <span className="text-xs font-bold text-slate-800">Lucro/Ano</span>
-                      <div className="text-right">
-                        <p className={`text-sm font-bold ${lucro >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          R$ {lucro.toLocaleString('pt-BR')}
-                        </p>
-                        <p className={`text-[10px] ${lucro >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          margem {margemLucro}%
-                        </p>
-                      </div>
-                    </div>
-                    {/* Margin bar */}
-                    <div className="mt-2">
-                      <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${lucro >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
-                          style={{ width: `${Math.min(Math.abs(parseFloat(margemLucro)), 100)}%` }}
-                        />
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>

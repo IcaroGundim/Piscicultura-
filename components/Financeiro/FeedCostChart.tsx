@@ -45,7 +45,7 @@ export default function FeedCostChart() {
   const totalRacaoMes = feedByPhase.reduce((s, p) => s + p.racao_mes, 0);
 
   return (
-    <div className="h-full flex flex-col rounded-2xl border border-border bg-card/90 p-5 shadow-sm shadow-blue-950/5 backdrop-blur-sm">
+    <div className="h-full flex flex-col rounded-2xl border border-border bg-card/90 p-4 shadow-sm shadow-blue-950/5 backdrop-blur-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-bold text-slate-800" style={{ fontFamily: 'var(--font-syne)' }}>
@@ -57,7 +57,7 @@ export default function FeedCostChart() {
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[300px]">
+      <div className="flex-1 w-full min-h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={feedByPhase} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
