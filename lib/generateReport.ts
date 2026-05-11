@@ -3,6 +3,13 @@ import autoTable from 'jspdf-autotable';
 import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, Custos } from './types';
 import { PHASE_LABELS } from './types';
 
+// Augment jsPDF type for lastAutoTable property added by jspdf-autotable
+declare module 'jspdf' {
+  interface jsPDF {
+    lastAutoTable?: { finalY: number };
+  }
+}
+
 interface ReportData {
   tanks: Tank[];
   bercarioLotes: BercarioLote[];
@@ -634,7 +641,7 @@ export function generateReport(data: ReportData) {
     theme: 'grid',
   });
 
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
 
   // ═══════════════════════════════════════════════════════════════
   // 4. LOTES — BERÇÁRIO
@@ -663,7 +670,7 @@ export function generateReport(data: ReportData) {
       theme: 'grid',
     });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -693,7 +700,7 @@ export function generateReport(data: ReportData) {
       theme: 'grid',
     });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -725,7 +732,7 @@ export function generateReport(data: ReportData) {
       theme: 'grid',
     });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
   }
 
   // ═══════════════════════════════════════════════════════════════

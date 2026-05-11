@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AquaGest — Piscicultura
 
-## Getting Started
+Sistema de gestão de tanques para piscicultura de tambaqui. Controle de lotes, projeções de crescimento, manejo alimentar e análise financeira em tempo real.
 
-First, run the development server:
+## Stack Tecnológica
+
+- **Framework:** [Next.js](https://nextjs.org) 16.2.6 (App Router)
+- **UI:** React 19, TypeScript 5, Tailwind CSS 4
+- **Componentes:** shadcn/ui (base-nova via @base-ui/react)
+- **State Management:** Zustand (com persistência em localStorage)
+- **Gráficos:** Recharts
+- **Relatórios:** jsPDF + jspdf-autotable
+- **Ícones:** Lucide React
+
+## Funcionalidades
+
+- **Visão Geral dos Tanques:** Grid interativo com filtragem por fase (Berçário, Recria, Engorda, Vazio)
+- **Detalhamento por Tanque:** Edição inline de métricas, mudança de fase com confirmação, projeções de crescimento
+- **Manejo Alimentar:** Cálculo automático de consumo de ração por fase e por tanque
+- **Análise Financeira:** Receita estimada, custos, lucro líquido e margem de lucro com gráficos interativos
+- **Premissas & Configurações:** Parâmetros globais de produção, pesos de transferência e financeiros
+- **Relatórios PDF:** Geração de relatórios completos de produção
+
+## Começando
+
+### Pré-requisitos
+
+- Node.js 22+
+- npm 10+
+
+### Instalação
 
 ```bash
+# Clone o repositório
+git clone <url-do-repositorio>
+cd piscicultura
+
+# Instale as dependências
+npm install
+
+# Inicie o servidor de desenvolvimento
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000) no navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Scripts disponíveis
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev      # Servidor de desenvolvimento com Turbopack
+npm run build    # Build de produção
+npm run start    # Servidor de produção
+npm run lint     # ESLint
+npm run type-check  # TypeScript --noEmit
+npm run format   # Prettier --write
+npm run format:check # Prettier --check
+```
 
-## Learn More
+## Arquitetura
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/                    # App Router (Next.js)
+  page.tsx              # Dashboard principal
+  financeiro/page.tsx   # Página financeira (charts + KPIs)
+  premissas/page.tsx    # Configurações globais
+components/
+  ui/                   # Componentes shadcn/ui (Button, Dialog, Select, etc.)
+  forms/                # Componentes de formulário reutilizáveis
+  Financeiro/           # Charts e tabelas financeiras
+  MetricCard.tsx        # Card métrico com edição inline
+  SectionTitle.tsx      # Título de seção semântico
+  EmptyState.tsx        # Estado vazio reutilizável
+  ErrorBoundary.tsx     # Boundary de erro
+lib/
+  hooks/                # Hooks customizados (useProductionMetrics)
+  phase-utils.ts        # Helpers de estilo por fase
+  store.ts              # Zustand store com persistência
+  types.ts              # Tipos TypeScript
+  generateReport.ts     # Gerador de relatórios PDF
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Segurança
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+O projeto inclui headers de segurança configurados em `next.config.ts`:
 
-## Deploy on Vercel
+- Content Security Policy (CSP)
+- X-Frame-Options: DENY
+- X-Content-Type-Options: nosniff
+- Strict-Transport-Security (HSTS)
+- Referrer-Policy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contribuição
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -m 'feat: nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
+
+## Licença
+
+MIT

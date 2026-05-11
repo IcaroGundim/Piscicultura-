@@ -1,85 +1,129 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 import { Fish, Layers, TrendingUp, Wheat } from 'lucide-react';
 
+type StatKey = 'fish' | 'tanks' | 'revenue' | 'feed';
+
+interface StatItem {
+  key: StatKey;
+  icon: typeof Fish;
+  label: string;
+  value: string;
+  sub: string;
+}
+
 export default function StatsBar() {
-  const { tanks, bercarioLotes, recriaLotes, engordaLotes, premissas } = useStore();
+  const tanks = useStore((s) => s.tanks);
+  const bercarioLotes = useStore((s) => s.bercarioLotes);
+  const recriaLotes = useStore((s) => s.recriaLotes);
+  const engordaLotes = useStore((s) => s.engordaLotes);
+  const premissas = useStore((s) => s.premissas);
 
-  const countByPhase = (phase: string) => tanks.filter((t) => t.phase === phase).length;
+  const countByPhase = useMemo(
+    () => (phase: 'bercario' | 'recria' | 'engorda' | 'vazio') =>
+      tanks.filter((t) => t.phase === phase).length,
+    [tanks]
+  );
 
-  const totalFishBercario = bercarioLotes.reduce((s, l) => s + l.qtd_peixes, 0);
-  const totalFishRecria = recriaLotes.reduce((s, l) => s + l.qtd_peixes, 0);
-  const totalFishEngorda = engordaLotes.reduce((s, l) => s + l.qtd_peixes, 0);
+  const totalFishBercario = useMemo(
+    () => bercarioLotes.reduce((s, l) => s + l.qtd_peixes, 0),
+    [bercarioLotes]
+  );
+  const totalFishRecria = useMemo(
+    () => recriaLotes.reduce((s, l) => s + l.qtd_peixes, 0),
+    [recriaLotes]
+  );
+  const totalFishEngorda = useMemo(
+    () => engordaLotes.reduce((s, l) => s + l.qtd_peixes, 0),
+    [engordaLotes]
+  );
   const totalFish = totalFishBercario + totalFishRecria + totalFishEngorda;
 
-  const totalPesoEngorda = engordaLotes.reduce((s, l) => s + l.peso_total_kg, 0);
+  const totalPesoEngorda = useMemo(
+    () => engordaLotes.reduce((s, l) => s + l.peso_total_kg, 0),
+    [engordaLotes]
+  );
   const receitaEstimada = totalPesoEngorda * premissas.preco_venda * premissas.ciclos_ano;
 
-  const totalRacaoMes = [
-    ...bercarioLotes.map((l) => l.racao_mes_sc),
-    ...recriaLotes.map((l) => l.racao_mes_sc),
-    ...engordaLotes.map((l) => l.racao_mes_sc),
-  ].reduce((s, v) => s + v, 0);
+  const totalRacaoMes = useMemo(
+    () =>
+      [...bercarioLotes, ...recriaLotes, ...engordaLotes].reduce(
+        (s, l) => s + l.racao_mes_sc,
+        0
+      ),
+    [bercarioLotes, recriaLotes, engordaLotes]
+  );
 
-  const stats = [
+  const stats: StatItem[] = [
     {
+      key: 'fish',
       icon: Fish,
       label: 'Total de Peixes',
       value: totalFish.toLocaleString('pt-BR'),
       sub: `${countByPhase('bercario')}B · ${countByPhase('recria')}R · ${countByPhase('engorda')}E`,
-      color: 'text-blue-700',
-      bg: 'bg-blue-50',
-      border: 'border-blue-200/80',
     },
     {
+      key: 'tanks',
       icon: Layers,
       label: 'Tanques Ativos',
       value: (countByPhase('bercario') + countByPhase('recria') + countByPhase('engorda')).toString(),
       sub: `de ${tanks.length} tanques`,
-      color: 'text-indigo-700',
-      bg: 'bg-indigo-50',
-      border: 'border-indigo-200/80',
     },
     {
+      key: 'revenue',
       icon: TrendingUp,
       label: 'Receita Estimada/Ano',
-      value: `R$ ${(receitaEstimada).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
+      value: `R$ ${receitaEstimada.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
       sub: `${premissas.ciclos_ano} ciclos · R$ ${premissas.preco_venda}/kg`,
-      color: 'text-emerald-700',
-      bg: 'bg-emerald-50',
-      border: 'border-emerald-200/80',
     },
     {
+      key: 'feed',
       icon: Wheat,
       label: 'Ração/Mês',
       value: `${totalRacaoMes.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} sc`,
       sub: 'todos os tanques',
-      color: 'text-orange-700',
-      bg: 'bg-orange-50',
-      border: 'border-orange-200/80',
     },
   ];
 
+  const statMeta: Record<StatKey, { border: string; iconBg: string; iconColor: string; barColor: string; barWidth: string }> = {
+    fish:    { border: 'border-l-blue-500',    iconBg: 'bg-blue-500/10',    iconColor: 'text-blue-600',    barColor: 'bg-blue-500',    barWidth: 'w-[75%]' },
+    tanks:   { border: 'border-l-indigo-500',  iconBg: 'bg-indigo-500/10',  iconColor: 'text-indigo-600',  barColor: 'bg-indigo-500',  barWidth: 'w-[60%]' },
+    revenue: { border: 'border-l-emerald-500', iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-600', barColor: 'bg-emerald-500', barWidth: 'w-[80%]' },
+    feed:    { border: 'border-l-orange-500',  iconBg: 'bg-orange-500/10',  iconColor: 'text-orange-600',  barColor: 'bg-orange-500',  barWidth: 'w-[65%]' },
+  };
+
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {stats.map(({ icon: Icon, label, value, sub, color, bg, border }) => (
-        <div
-          key={label}
-          className={`group flex items-center gap-3 rounded-2xl border ${bg} ${border} bg-card/90 px-4 py-3 shadow-sm shadow-blue-900/5 backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
-        >
-          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${bg} ${border}`}>
-            <Icon className={`w-4.5 h-4.5 ${color}`} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider leading-tight text-slate-500">{label}</p>
-            <p className={`text-sm font-bold leading-tight ${color}`} style={{ fontFamily: 'var(--font-syne)' }}>
-              {value}
-            </p>
-            <p className="mt-0.5 text-[10px] leading-tight text-slate-400">{sub}</p>
-          </div>
-        </div>
-      ))}
+    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {stats.map(({ key, icon: Icon, label, value, sub }) => {
+        const meta = statMeta[key];
+
+        return (
+          <div
+            key={label}
+            className={cn(
+              'group relative overflow-hidden rounded-2xl border border-border bg-card/80 backdrop-blur-sm px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
+              'border-l-2',
+              meta.border
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', meta.iconBg)}>
+                <Icon className={cn('w-5 h-5', meta.iconColor)} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+                <p className="text-lg font-bold text-foreground font-heading leading-tight">
+                  {value}
+                </p>
+                <p className="text-xs text-muted-foreground leading-tight">{sub}</p>
+              </div>
+            </div>
+            </div>
+        );
+      })}
     </div>
   );
 }

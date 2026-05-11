@@ -85,6 +85,37 @@
   --sidebar-ring: #3b82f6;
 }
 
+.dark {
+  --background: #0a0e1a;
+  --foreground: #e2e8f0;
+  --card: #111827;
+  --card-foreground: #e2e8f0;
+  --popover: #1e293b;
+  --popover-foreground: #e2e8f0;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #e2e8f0;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #3b82f6;
+
+  --sidebar: #111827;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #3b82f6;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -106,12 +137,6 @@
   }
 }
 
-/* Ripple animation for tank cards */
-@keyframes ripple {
-  0% { transform: scale(0); opacity: 0.3; }
-  100% { transform: scale(4); opacity: 0; }
-}
-
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
@@ -131,21 +156,12 @@
   animation: fadeInUp 0.4s ease both;
 }
 
-.ripple-container {
-  position: relative;
-  overflow: hidden;
-}
-
-.ripple-effect {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(59, 130, 246, 0.24);
-  animation: ripple 0.6s linear;
-  pointer-events: none;
-}
-
 .glow-teal {
   animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.focus-ring {
+  @apply focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none;
 }
 
 /* Scrollbar */
@@ -153,3 +169,5 @@
 ::-webkit-scrollbar-track { background: #eef3fb; }
 ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.5); }
+
+

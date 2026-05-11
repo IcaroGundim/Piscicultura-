@@ -54,11 +54,11 @@ export const useStore = create<AppState>()(
             return { tanks: updatedTanks };
           }
 
-          // Find existing lote in the OLD phase
+          // Find existing lote in the OLD phase (use nullish coalescing)
           const oldBercario = state.bercarioLotes.find((l) => l.tankId === tankId);
           const oldRecria = state.recriaLotes.find((l) => l.tankId === tankId);
           const oldEngorda = state.engordaLotes.find((l) => l.tankId === tankId);
-          const existing = oldBercario || oldRecria || oldEngorda;
+          const existing = oldBercario ?? oldRecria ?? oldEngorda;
 
           // Remove from ALL phase arrays (old phase cleanup)
           let bercarioLotes = state.bercarioLotes.filter((l) => l.tankId !== tankId);
@@ -84,12 +84,12 @@ export const useStore = create<AppState>()(
               bercarioLotes = [...bercarioLotes, {
                 ...common,
                 nome: oldBercario?.nome ?? '',
-                peso_transferencia_kg: (oldBercario ?? oldRecria)?.peso_transferencia_kg ?? 0.1,
+                peso_transferencia_kg: oldBercario?.peso_transferencia_kg ?? oldRecria?.peso_transferencia_kg ?? 0.1,
               }];
             } else if (newPhase === 'recria') {
               recriaLotes = [...recriaLotes, {
                 ...common,
-                peso_transferencia_kg: (oldRecria ?? oldBercario)?.peso_transferencia_kg ?? 0.7,
+                peso_transferencia_kg: oldRecria?.peso_transferencia_kg ?? oldBercario?.peso_transferencia_kg ?? 0.7,
                 periodo_meses: oldRecria?.periodo_meses ?? oldEngorda?.periodo_meses ?? 5,
               }];
             } else if (newPhase === 'engorda') {
@@ -149,6 +149,24 @@ export const useStore = create<AppState>()(
           engordaLotes: state.engordaLotes.filter((l) => l.tankId !== tankId),
         })),
     }),
-    { name: 'piscicultura-storage' }
+    {
+      name: 'piscicultura-storage',
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version === 0) {
+          // Migration from unversioned storage: ensure all fields exist
+          const state = persistedState as Partial<AppState>;
+          return {
+            tanks: state.tanks ?? initialTanks,
+            bercarioLotes: state.bercarioLotes ?? initialBercarioLotes,
+            recriaLotes: state.recriaLotes ?? initialRecriaLotes,
+            engordaLotes: state.engordaLotes ?? initialEngordaLotes,
+            premissas: state.premissas ?? initialPremissas,
+            custos: state.custos ?? initialCustos,
+          } as AppState;
+        }
+        return persistedState as AppState;
+      },
+    }
   )
 );

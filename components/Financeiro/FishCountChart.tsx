@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 import { PHASE_LABELS, PHASE_COLORS } from '@/lib/types';
 import type { TankPhase } from '@/lib/types';
 import {
@@ -34,7 +35,10 @@ const METRIC_OPTIONS: { value: Metric; label: string; icon: typeof Fish; unit: s
 ];
 
 export default function FishCountChart() {
-  const { tanks, bercarioLotes, recriaLotes, engordaLotes } = useStore();
+  const tanks = useStore((s) => s.tanks);
+  const bercarioLotes = useStore((s) => s.bercarioLotes);
+  const recriaLotes = useStore((s) => s.recriaLotes);
+  const engordaLotes = useStore((s) => s.engordaLotes);
   const [filter, setFilter] = useState<PhaseFilter>('todos');
   const [metric, setMetric] = useState<Metric>('peixes');
 
@@ -106,7 +110,7 @@ export default function FishCountChart() {
               <metricConfig.icon className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-800" style={{ fontFamily: 'var(--font-syne)' }}>
+              <h3 className="text-sm font-bold text-slate-800">
                 Dados por Tanque
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -121,13 +125,12 @@ export default function FishCountChart() {
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
-                className={`
-                  px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200
-                  ${filter === opt.value
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 min-h-[36px]',
+                  filter === opt.value
                     ? 'bg-white text-slate-800 shadow-sm border border-slate-200/70'
                     : 'text-slate-500 hover:text-slate-700 border border-transparent'
-                  }
-                `}
+                )}
               >
                 {opt.label}
               </button>
@@ -144,15 +147,14 @@ export default function FishCountChart() {
               <button
                 key={opt.value}
                 onClick={() => setMetric(opt.value)}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 border
-                  ${isActive
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 border min-h-[36px]',
+                  isActive
                     ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700'
-                  }
-                `}
+                )}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-blue-600' : 'text-slate-400')} />
                 {opt.label}
               </button>
             );
@@ -212,9 +214,8 @@ export default function FishCountChart() {
                   dataKey="valor"
                   position="right"
                   style={{ fontSize: 11, fontWeight: 600, fill: '#475569' }}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(v: any) => {
-                    const num = Number(v ?? 0);
+                  formatter={(v) => {
+                    const num = typeof v === 'number' ? v : Number(v ?? 0);
                     if (metric === 'peixes') return num.toLocaleString('pt-BR');
                     return num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
                   }}
@@ -239,7 +240,7 @@ export default function FishCountChart() {
             return (
               <div key={phase} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PHASE_COLORS[phase] }} />
-                <span className="text-[11px] text-slate-600 font-medium">
+                <span className="text-xs text-slate-600 font-medium">
                   {PHASE_LABELS[phase]}: {formatValue(phaseTotal)} {metricConfig.unitShort}
                 </span>
               </div>

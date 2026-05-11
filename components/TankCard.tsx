@@ -1,10 +1,16 @@
 'use client';
 
-import { useRef } from 'react';
 import type { Tank } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import PhaseBadge from './PhaseBadge';
-import { Droplets } from 'lucide-react';
+import { Droplets, Ruler, Fish, Scale } from 'lucide-react';
+import { useStore } from '@/lib/store';
+import {
+  getPhaseBorderColor,
+  getPhaseGlowColor,
+  getPhaseSelectedBg,
+  getPhaseTopAccent,
+} from '@/lib/phase-utils';
 
 interface TankCardProps {
   tank: Tank;
@@ -13,91 +19,58 @@ interface TankCardProps {
   animationDelay?: number;
 }
 
-const phaseBorderColors: Record<string, string> = {
-  bercario: 'border-blue-200/90 hover:border-blue-300',
-  recria:   'border-emerald-200/90 hover:border-emerald-300',
-  engorda:  'border-orange-200/90 hover:border-orange-300',
-  vazio:    'border-slate-200 hover:border-slate-300',
-};
-
-const phaseGlowColors: Record<string, string> = {
-  bercario: 'hover:shadow-[0_10px_24px_rgba(59,130,246,0.14)]',
-  recria:   'hover:shadow-[0_10px_24px_rgba(16,185,129,0.14)]',
-  engorda:  'hover:shadow-[0_10px_24px_rgba(249,115,22,0.14)]',
-  vazio:    'hover:shadow-[0_10px_20px_rgba(100,116,139,0.12)]',
-};
-
-const phaseSelectedBg: Record<string, string> = {
-  bercario: 'bg-blue-50/80',
-  recria:   'bg-emerald-50/80',
-  engorda:  'bg-orange-50/80',
-  vazio:    'bg-slate-50/90',
-};
-
-const phaseTopAccent: Record<string, string> = {
-  bercario: 'from-blue-500/80',
-  recria:   'from-emerald-500/80',
-  engorda:  'from-orange-500/80',
-  vazio:    'from-slate-400/80',
-};
-
 export default function TankCard({
   tank,
   isSelected,
   onClick,
   animationDelay = 0,
 }: TankCardProps) {
-  const cardRef = useRef<HTMLButtonElement>(null);
+  const bercarioLotes = useStore((s) => s.bercarioLotes);
+  const recriaLotes = useStore((s) => s.recriaLotes);
+  const engordaLotes = useStore((s) => s.engordaLotes);
 
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const btn = cardRef.current;
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      const size = Math.max(rect.width, rect.height);
-      const x = e.clientX - rect.left - size / 2;
-      const y = e.clientY - rect.top - size / 2;
-      const ripple = document.createElement('span');
-      ripple.className = 'ripple-effect';
-      ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
-      btn.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 700);
-    }
-    onClick();
-  };
+  const lote =
+    tank.phase === 'bercario'
+      ? bercarioLotes.find((l) => l.tankId === tank.id)
+      : tank.phase === 'recria'
+      ? recriaLotes.find((l) => l.tankId === tank.id)
+      : tank.phase === 'engorda'
+      ? engordaLotes.find((l) => l.tankId === tank.id)
+      : undefined;
+
+  const hasLote = !!lote;
 
   return (
     <button
-      ref={cardRef}
-      onClick={handleClick}
+      data-tank-id={tank.id}
+      onClick={onClick}
       className={cn(
-        'ripple-container w-full cursor-pointer rounded-2xl border text-left transition-all duration-300',
-        'tank-card-enter group overflow-hidden',
+        'group relative w-full cursor-pointer rounded-2xl border text-left transition-all duration-300',
+        'tank-card-enter',
         'bg-card/95 backdrop-blur-sm',
-        phaseBorderColors[tank.phase],
-        phaseGlowColors[tank.phase],
+        getPhaseBorderColor(tank.phase),
+        getPhaseGlowColor(tank.phase),
+        'focus-visible:ring-2 focus-visible:ring-ring/50',
+        'hover:shadow-lg hover:-translate-y-1',
         isSelected && [
-          phaseSelectedBg[tank.phase],
-          'scale-[1.01] ring-1 shadow-md',
-          tank.phase === 'bercario' ? 'ring-blue-300 shadow-blue-100/80' :
-          tank.phase === 'recria'   ? 'ring-emerald-300 shadow-emerald-100/80' :
-          tank.phase === 'engorda'  ? 'ring-orange-300 shadow-orange-100/80' : 'ring-slate-300 shadow-slate-100/80',
+          getPhaseSelectedBg(tank.phase),
+          'ring-2 ring-primary ring-offset-2 shadow-lg shadow-primary/20',
         ]
       )}
       style={{ animationDelay: `${animationDelay}ms` }}
     >
-      <div className={cn('h-[2px] w-full bg-gradient-to-r to-transparent', phaseTopAccent[tank.phase])} />
+      {/* Faixa superior colorida */}
+      <div className={cn('h-1.5 w-full bg-gradient-to-r to-transparent', getPhaseTopAccent(tank.phase))} />
 
-      <div className="p-2.5 sm:p-3.5">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex flex-col">
-            <span
-              className="text-sm font-bold text-slate-800 leading-none"
-              style={{ fontFamily: 'var(--font-syne)' }}
-            >
-              T{tank.id.toString().padStart(2, '0')}
+      <div className="p-4">
+        {/* Header: ID + Badge */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-muted font-bold text-sm text-foreground font-heading">
+              {tank.id.toString().padStart(2, '0')}
             </span>
             {tank.subfase && (
-              <span className="mt-1 block max-w-[100px] truncate text-[10px] text-slate-500" title={tank.subfase}>
+              <span className="text-xs font-medium text-muted-foreground truncate max-w-[80px]" title={tank.subfase}>
                 {tank.subfase}
               </span>
             )}
@@ -105,10 +78,48 @@ export default function TankCard({
           <PhaseBadge phase={tank.phase} size="sm" />
         </div>
 
-        <div className="flex items-center gap-1.5 mt-2">
-          <Droplets className="h-3 w-3 text-blue-600/70" />
-          <span className="text-[11px] font-medium text-slate-600">{tank.area_m2.toLocaleString('pt-BR')} m²</span>
+        {/* Info row */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-1.5">
+            <Ruler className="h-3 w-3 text-muted-foreground/60" />
+            <span className="text-xs text-muted-foreground">{tank.area_m2.toLocaleString('pt-BR')} m²</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Droplets className="h-3 w-3 text-primary/60" />
+            <span className="text-xs text-muted-foreground">{tank.area_ha} ha</span>
+          </div>
         </div>
+
+        {/* Lote metrics */}
+        {tank.phase !== 'vazio' && (
+          <div className="space-y-2">
+            {hasLote ? (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1">
+                    <Fish className="h-3 w-3 text-primary/70" />
+                    <span className="text-xs font-medium text-foreground">
+                      {(lote.qtd_peixes ?? 0).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1">
+                    <Scale className="h-3 w-3 text-primary/70" />
+                    <span className="text-xs font-medium text-foreground">
+                      {(lote.peso_total_kg ?? 0).toLocaleString('pt-BR')} kg
+                    </span>
+                  </div>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  Lote Ativo
+                </span>
+              </>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-muted bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                Sem lote
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </button>
   );
