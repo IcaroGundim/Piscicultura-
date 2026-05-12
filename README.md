@@ -7,7 +7,7 @@ Sistema de gestão de tanques para piscicultura de tambaqui. Controle de lotes, 
 - **Framework:** [Next.js](https://nextjs.org) 16.2.6 (App Router)
 - **UI:** React 19, TypeScript 5, Tailwind CSS 4
 - **Componentes:** shadcn/ui (base-nova via @base-ui/react)
-- **State Management:** Zustand (com persistência em localStorage)
+- **State Management:** Zustand sincronizado com PostgreSQL Neon
 - **Gráficos:** Recharts
 - **Relatórios:** jsPDF + jspdf-autotable
 - **Ícones:** Lucide React
@@ -43,6 +43,10 @@ npm run dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000) no navegador.
+
+### Variáveis de ambiente
+
+Configure `DATABASE_URL` com a string de conexão do seu banco Neon/Postgres. Sem ela, o app continua funcionando com os dados padrão, mas sem persistência no banco.
 
 ### Scripts disponíveis
 

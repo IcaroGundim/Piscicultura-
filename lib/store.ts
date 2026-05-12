@@ -1,13 +1,38 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, Custos, TankPhase, LocationKey, LocationData } from './types';
-import { initialLocations } from './initialData';
+'use client';
+
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from 'react';
+import { useStore as useZustandStore } from 'zustand';
+import { createStore, type StoreApi } from 'zustand/vanilla';
+import type {
+  BercarioLote,
+  Custos,
+  EngordaLote,
+  LocationData,
+  LocationKey,
+  Premissas,
+  RecriaLote,
+  Tank,
+  TankPhase,
+} from './types';
+import {
+  buildDerivedState,
+  createDefaultProjectState,
+  normalizeProjectState,
+  selectPersistedProjectState,
+  type ProjectStateSnapshot,
+} from './projectState';
 
 interface AppState {
   activeLocation: LocationKey;
-  locations: Record<string, LocationData>;
+  locations: Record<LocationKey, LocationData>;
 
-  // Derived data access for active location
   activeTanks: Tank[];
   activeBercarioLotes: BercarioLote[];
   activeRecriaLotes: RecriaLote[];
@@ -15,7 +40,6 @@ interface AppState {
   activePremissas: Premissas;
   activeCustos: Custos;
 
-  // Actions
   setLocation: (key: LocationKey) => void;
   updateTankPhase: (tankId: number, newPhase: TankPhase, subfase?: string) => void;
   updateBercarioLote: (tankId: number, data: Partial<BercarioLote>) => void;
@@ -30,235 +54,400 @@ interface AppState {
   addTank: (tank: Tank) => void;
   removeTank: (tankId: number) => void;
 
-  // Phase color configuration
   phaseColors: Record<TankPhase, string>;
   setPhaseColor: (phase: TankPhase, color: string) => void;
 }
 
-function updateLocationInState(
-  state: AppState,
-  updater: (loc: LocationData) => Partial<LocationData>
-): Partial<AppState> {
-  const loc = state.locations[state.activeLocation];
-  const updated = { ...loc, ...updater(loc) };
-  const newLocations = { ...state.locations, [state.activeLocation]: updated };
-  const derived = getDerivedState(newLocations, state.activeLocation);
-  return { locations: newLocations, ...derived };
+type AppStore = StoreApi<AppState>;
+
+interface StoreProviderProps {
+  initialState: ProjectStateSnapshot;
+  children: ReactNode;
 }
 
-function getDerivedState(locations: Record<string, LocationData>, activeLocation: string) {
-  const loc = locations[activeLocation];
-  return {
-    activeTanks: loc.tanks,
-    activeBercarioLotes: loc.bercarioLotes,
-    activeRecriaLotes: loc.recriaLotes,
-    activeEngordaLotes: loc.engordaLotes,
-    activePremissas: loc.premissas,
-    activeCustos: loc.custos,
-  };
+const STATE_ENDPOINT = '/api/project-state';
+const DEFAULT_PROJECT_STATE_SIGNATURE = JSON.stringify(
+  selectPersistedProjectState(createDefaultProjectState())
+);
+
+const StoreContext = createContext<AppStore | null>(null);
+const defaultStore = createProjectStore(createDefaultProjectState());
+
+let activeStore: AppStore | null = null;
+
+function getActiveStore() {
+  return activeStore ?? defaultStore;
 }
 
-export const useStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      activeLocation: 'rondonia' as LocationKey,
-      locations: initialLocations as Record<string, LocationData>,
+function isDefaultProjectState(snapshot: ProjectStateSnapshot) {
+  return JSON.stringify(selectPersistedProjectState(snapshot)) === DEFAULT_PROJECT_STATE_SIGNATURE;
+}
 
-      // These are set dynamically via getDerivedState
-      activeTanks: initialLocations.rondonia.tanks,
-      activeBercarioLotes: initialLocations.rondonia.bercarioLotes,
-      activeRecriaLotes: initialLocations.rondonia.recriaLotes,
-      activeEngordaLotes: initialLocations.rondonia.engordaLotes,
-      activePremissas: initialLocations.rondonia.premissas,
-      activeCustos: initialLocations.rondonia.custos,
+function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
+  return createStore<AppState>()((set, get) => ({
+    activeLocation: initialState.activeLocation,
+    locations: initialState.locations,
 
-      phaseColors: { bercario: '#94ba65', recria: '#f3fa6b', engorda: '#2563eb', vazio: '#52525b' },
+    ...buildDerivedState(initialState.locations, initialState.activeLocation),
+    phaseColors: { ...initialState.phaseColors },
 
-      setLocation: (key: LocationKey) => {
-        const state = get();
-        const derived = getDerivedState(state.locations, key);
-        set({ activeLocation: key, ...derived });
-      },
+    setLocation: (key: LocationKey) => {
+      const state = get();
+      const derived = buildDerivedState(state.locations, key);
+      set({ activeLocation: key, ...derived });
+    },
 
-      updateTankPhase: (tankId, newPhase, subfase) =>
-        set((state) => {
-          const loc = state.locations[state.activeLocation];
-          const tank = loc.tanks.find((t) => t.id === tankId);
-          if (!tank) return state;
+    updateTankPhase: (tankId, newPhase, subfase) =>
+      set((state) => {
+        const location = state.locations[state.activeLocation];
+        const tank = location.tanks.find((entry) => entry.id === tankId);
 
-          const updatedTanks = loc.tanks.map((t) =>
-            t.id === tankId ? { ...t, phase: newPhase, subfase } : t
-          );
+        if (!tank) {
+          return state;
+        }
 
-          if (tank.phase === newPhase) {
-            return updateLocationInState(state, () => ({ tanks: updatedTanks }));
-          }
+        const updatedTanks = location.tanks.map((entry) =>
+          entry.id === tankId ? { ...entry, phase: newPhase, subfase } : entry
+        );
 
-          const oldBercario = loc.bercarioLotes.find((l) => l.tankId === tankId);
-          const oldRecria = loc.recriaLotes.find((l) => l.tankId === tankId);
-          const oldEngorda = loc.engordaLotes.find((l) => l.tankId === tankId);
-          const existing = oldBercario ?? oldRecria ?? oldEngorda;
+        if (tank.phase === newPhase) {
+          return updateLocationInState(state, () => ({ tanks: updatedTanks }));
+        }
 
-          let bercarioLotes = loc.bercarioLotes.filter((l) => l.tankId !== tankId);
-          let recriaLotes = loc.recriaLotes.filter((l) => l.tankId !== tankId);
-          let engordaLotes = loc.engordaLotes.filter((l) => l.tankId !== tankId);
+        const oldBercario = location.bercarioLotes.find((entry) => entry.tankId === tankId);
+        const oldRecria = location.recriaLotes.find((entry) => entry.tankId === tankId);
+        const oldEngorda = location.engordaLotes.find((entry) => entry.tankId === tankId);
+        const existing = oldBercario ?? oldRecria ?? oldEngorda;
 
-          if (existing && newPhase !== 'vazio') {
-            const common = {
-              tankId,
-              qtd_peixes: existing.qtd_peixes,
-              peso_entrada_kg: existing.peso_entrada_kg,
-              peso_ganhar_kg: existing.peso_ganhar_kg,
-              racao_periodo_kg: existing.racao_periodo_kg,
-              peso_total_kg: existing.peso_total_kg,
-              densidade_kg_m2: existing.densidade_kg_m2,
-              racao_dia_sc: existing.racao_dia_sc,
-              racao_mes_sc: existing.racao_mes_sc,
-              racao_total_sc: existing.racao_total_sc,
-            };
+        let bercarioLotes = location.bercarioLotes.filter((entry) => entry.tankId !== tankId);
+        let recriaLotes = location.recriaLotes.filter((entry) => entry.tankId !== tankId);
+        let engordaLotes = location.engordaLotes.filter((entry) => entry.tankId !== tankId);
 
-            if (newPhase === 'bercario') {
-              bercarioLotes = [...bercarioLotes, {
+        if (existing && newPhase !== 'vazio') {
+          const common = {
+            tankId,
+            qtd_peixes: existing.qtd_peixes,
+            peso_entrada_kg: existing.peso_entrada_kg,
+            peso_ganhar_kg: existing.peso_ganhar_kg,
+            racao_periodo_kg: existing.racao_periodo_kg,
+            peso_total_kg: existing.peso_total_kg,
+            densidade_kg_m2: existing.densidade_kg_m2,
+            racao_dia_sc: existing.racao_dia_sc,
+            racao_mes_sc: existing.racao_mes_sc,
+            racao_total_sc: existing.racao_total_sc,
+          };
+
+          if (newPhase === 'bercario') {
+            bercarioLotes = [
+              ...bercarioLotes,
+              {
                 ...common,
                 nome: oldBercario?.nome ?? '',
-                peso_transferencia_kg: oldBercario?.peso_transferencia_kg ?? oldRecria?.peso_transferencia_kg ?? 0.1,
-              }];
-            } else if (newPhase === 'recria') {
-              recriaLotes = [...recriaLotes, {
+                peso_transferencia_kg:
+                  oldBercario?.peso_transferencia_kg ??
+                  oldRecria?.peso_transferencia_kg ??
+                  0.1,
+              },
+            ];
+          } else if (newPhase === 'recria') {
+            recriaLotes = [
+              ...recriaLotes,
+              {
                 ...common,
-                peso_transferencia_kg: oldRecria?.peso_transferencia_kg ?? oldBercario?.peso_transferencia_kg ?? 0.7,
+                peso_transferencia_kg:
+                  oldRecria?.peso_transferencia_kg ??
+                  oldBercario?.peso_transferencia_kg ??
+                  0.7,
                 periodo_meses: oldRecria?.periodo_meses ?? oldEngorda?.periodo_meses ?? 5,
-              }];
-            } else if (newPhase === 'engorda') {
-              engordaLotes = [...engordaLotes, {
+              },
+            ];
+          } else if (newPhase === 'engorda') {
+            engordaLotes = [
+              ...engordaLotes,
+              {
                 ...common,
                 modulo: oldEngorda?.modulo ?? subfase ?? '',
                 conversao_alimentar: oldEngorda?.conversao_alimentar ?? 2,
                 peso_final_kg_peixe: oldEngorda?.peso_final_kg_peixe ?? 2.5,
                 periodo_meses: oldEngorda?.periodo_meses ?? oldRecria?.periodo_meses ?? 5,
-              }];
-            }
+              },
+            ];
           }
-
-          return updateLocationInState(state, () => ({
-            tanks: updatedTanks,
-            bercarioLotes,
-            recriaLotes,
-            engordaLotes,
-          }));
-        }),
-
-      updateBercarioLote: (tankId, data) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          bercarioLotes: loc.bercarioLotes.map((l) =>
-            l.tankId === tankId ? { ...l, ...data } : l
-          ),
-        }))),
-
-      updateRecriaLote: (tankId, data) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          recriaLotes: loc.recriaLotes.map((l) =>
-            l.tankId === tankId ? { ...l, ...data } : l
-          ),
-        }))),
-
-      updateEngordaLote: (tankId, data) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          engordaLotes: loc.engordaLotes.map((l) =>
-            l.tankId === tankId ? { ...l, ...data } : l
-          ),
-        }))),
-
-      updatePremissas: (data) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          premissas: { ...loc.premissas, ...data },
-        }))),
-
-      updateCustos: (data) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          custos: { ...loc.custos, ...data },
-        }))),
-
-      addBercarioLote: (lote) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          bercarioLotes: [...loc.bercarioLotes, lote],
-        }))),
-
-      addRecriaLote: (lote) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          recriaLotes: [...loc.recriaLotes, lote],
-        }))),
-
-      addEngordaLote: (lote) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          engordaLotes: [...loc.engordaLotes, lote],
-        }))),
-
-      removeLoteForTank: (tankId) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          bercarioLotes: loc.bercarioLotes.filter((l) => l.tankId !== tankId),
-          recriaLotes: loc.recriaLotes.filter((l) => l.tankId !== tankId),
-          engordaLotes: loc.engordaLotes.filter((l) => l.tankId !== tankId),
-        }))),
-
-      addTank: (tank) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          tanks: [...loc.tanks, tank],
-        }))),
-
-      removeTank: (tankId) =>
-        set((state) => updateLocationInState(state, (loc) => ({
-          tanks: loc.tanks.filter((t) => t.id !== tankId),
-          bercarioLotes: loc.bercarioLotes.filter((l) => l.tankId !== tankId),
-          recriaLotes: loc.recriaLotes.filter((l) => l.tankId !== tankId),
-          engordaLotes: loc.engordaLotes.filter((l) => l.tankId !== tankId),
-        }))),
-
-      setPhaseColor: (phase, color) => set((s) => ({ phaseColors: { ...s.phaseColors, [phase]: color } })),
-    }),
-    {
-      name: 'piscicultura-storage',
-      version: 4,
-      migrate: (persistedState, version) => {
-        if (version === 3) {
-          const state = persistedState as AppState;
-          const rondoniaCustos = state.locations?.rondonia?.custos;
-          const isOldDefaults =
-            rondoniaCustos?.receita_venda === 450000 &&
-            rondoniaCustos?.custo_racao === 180000 &&
-            rondoniaCustos?.outras_despesas === 45000;
-          if (isOldDefaults && state.locations?.rondonia) {
-            state.locations.rondonia.custos = { ...initialLocations.rondonia.custos };
-            const derived = getDerivedState(state.locations, state.activeLocation);
-            return { ...state, ...derived };
-          }
-          return state;
         }
-        if (version === 0 || version === 1 || version === 2) {
-          // Migration from v0/v1 (flat structure) to v2 (multi-location)
-          const state = persistedState as Record<string, unknown>;
-          const rondoniaData: LocationData = {
-            tanks: (state.tanks as Tank[]) ?? initialLocations.rondonia.tanks,
-            bercarioLotes: (state.bercarioLotes as BercarioLote[]) ?? initialLocations.rondonia.bercarioLotes,
-            recriaLotes: (state.recriaLotes as RecriaLote[]) ?? initialLocations.rondonia.recriaLotes,
-            engordaLotes: (state.engordaLotes as EngordaLote[]) ?? initialLocations.rondonia.engordaLotes,
-            premissas: (state.premissas as Premissas) ?? initialLocations.rondonia.premissas,
-            custos: (state.custos as Custos) ?? initialLocations.rondonia.custos,
-          };
-          const locations: Record<string, LocationData> = {
-            rondonia: rondoniaData,
-            acre: initialLocations.acre,
-          };
-          const derived = getDerivedState(locations, 'rondonia');
-          return {
-            activeLocation: 'rondonia' as LocationKey,
-            locations,
-            ...derived,
-            phaseColors: { bercario: '#94ba65', recria: '#f3fa6b', engorda: '#2563eb', vazio: '#52525b' },
-          } as AppState;
-        }
-        return persistedState as AppState;
-      },
+
+        return updateLocationInState(state, () => ({
+          tanks: updatedTanks,
+          bercarioLotes,
+          recriaLotes,
+          engordaLotes,
+        }));
+      }),
+
+    updateBercarioLote: (tankId, data) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          bercarioLotes: location.bercarioLotes.map((entry) =>
+            entry.tankId === tankId ? { ...entry, ...data } : entry
+          ),
+        }))
+      ),
+
+    updateRecriaLote: (tankId, data) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          recriaLotes: location.recriaLotes.map((entry) =>
+            entry.tankId === tankId ? { ...entry, ...data } : entry
+          ),
+        }))
+      ),
+
+    updateEngordaLote: (tankId, data) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          engordaLotes: location.engordaLotes.map((entry) =>
+            entry.tankId === tankId ? { ...entry, ...data } : entry
+          ),
+        }))
+      ),
+
+    updatePremissas: (data) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          premissas: { ...location.premissas, ...data },
+        }))
+      ),
+
+    updateCustos: (data) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          custos: { ...location.custos, ...data },
+        }))
+      ),
+
+    addBercarioLote: (lote) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          bercarioLotes: [...location.bercarioLotes, lote],
+        }))
+      ),
+
+    addRecriaLote: (lote) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          recriaLotes: [...location.recriaLotes, lote],
+        }))
+      ),
+
+    addEngordaLote: (lote) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          engordaLotes: [...location.engordaLotes, lote],
+        }))
+      ),
+
+    removeLoteForTank: (tankId) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          bercarioLotes: location.bercarioLotes.filter((entry) => entry.tankId !== tankId),
+          recriaLotes: location.recriaLotes.filter((entry) => entry.tankId !== tankId),
+          engordaLotes: location.engordaLotes.filter((entry) => entry.tankId !== tankId),
+        }))
+      ),
+
+    addTank: (tank) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          tanks: [...location.tanks, tank],
+        }))
+      ),
+
+    removeTank: (tankId) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          tanks: location.tanks.filter((entry) => entry.id !== tankId),
+          bercarioLotes: location.bercarioLotes.filter((entry) => entry.tankId !== tankId),
+          recriaLotes: location.recriaLotes.filter((entry) => entry.tankId !== tankId),
+          engordaLotes: location.engordaLotes.filter((entry) => entry.tankId !== tankId),
+        }))
+      ),
+
+    setPhaseColor: (phase, color) =>
+      set((state) => ({
+        phaseColors: { ...state.phaseColors, [phase]: color },
+      })),
+  }));
+}
+
+function updateLocationInState(
+  state: AppState,
+  updater: (location: LocationData) => Partial<LocationData>
+): Partial<AppState> {
+  const location = state.locations[state.activeLocation];
+  const updatedLocation = { ...location, ...updater(location) };
+  const locations = { ...state.locations, [state.activeLocation]: updatedLocation };
+
+  return {
+    locations,
+    ...buildDerivedState(locations, state.activeLocation),
+  };
+}
+
+function readLegacyProjectState(): ProjectStateSnapshot | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem('piscicultura-storage');
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as
+      | { state?: Partial<ProjectStateSnapshot> }
+      | Partial<ProjectStateSnapshot>;
+
+    if (parsed && typeof parsed === 'object' && 'state' in parsed) {
+      return normalizeProjectState(parsed.state ?? null);
     }
-  )
-);
+
+    return normalizeProjectState(parsed as Partial<ProjectStateSnapshot> | null);
+  } catch {
+    return null;
+  }
+}
+
+function useBoundStore<T>(selector: (state: AppState) => T): T {
+  const contextStore = useContext(StoreContext);
+  const store = contextStore ?? activeStore ?? defaultStore;
+  return useZustandStore(store, selector);
+}
+
+async function persistProjectState(snapshot: ProjectStateSnapshot, keepalive = false) {
+  const response = await fetch(STATE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(snapshot),
+    keepalive,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao salvar estado do projeto (${response.status})`);
+  }
+}
+
+export function StoreProvider({ initialState, children }: StoreProviderProps) {
+  const storeRef = useRef<AppStore | null>(null);
+
+  if (!storeRef.current) {
+    storeRef.current = createProjectStore(initialState);
+  }
+
+  useEffect(() => {
+    const store = storeRef.current;
+    if (!store) {
+      return undefined;
+    }
+
+    activeStore = store;
+
+    let lastPersistedSignature = JSON.stringify(
+      selectPersistedProjectState(store.getState())
+    );
+    let pendingSnapshot = selectPersistedProjectState(store.getState());
+    let pendingSignature = lastPersistedSignature;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let saveChain = Promise.resolve();
+
+    const flushSnapshot = (
+      snapshot: ProjectStateSnapshot,
+      signature: string,
+      keepalive = false
+    ) => {
+      saveChain = saveChain.then(async () => {
+        if (signature === lastPersistedSignature) {
+          return;
+        }
+
+        try {
+          await persistProjectState(snapshot, keepalive);
+          lastPersistedSignature = signature;
+        } catch (error) {
+          console.error('Erro ao salvar estado no Postgres:', error);
+        }
+      });
+
+      return saveChain;
+    };
+
+    const schedulePersist = (snapshot: ProjectStateSnapshot) => {
+      const signature = JSON.stringify(snapshot);
+      if (signature === lastPersistedSignature) {
+        return;
+      }
+
+      pendingSnapshot = snapshot;
+      pendingSignature = signature;
+
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      timer = setTimeout(() => {
+        const snapshotToSave = pendingSnapshot;
+        const signatureToSave = pendingSignature;
+        timer = null;
+        void flushSnapshot(snapshotToSave, signatureToSave);
+      }, 600);
+    };
+
+    const unsubscribe = store.subscribe((state) => {
+      schedulePersist(selectPersistedProjectState(state));
+    });
+
+    const legacySnapshot = readLegacyProjectState();
+    if (
+      legacySnapshot &&
+      !isDefaultProjectState(legacySnapshot) &&
+      isDefaultProjectState(selectPersistedProjectState(store.getState()))
+    ) {
+      store.setState({
+        activeLocation: legacySnapshot.activeLocation,
+        locations: legacySnapshot.locations,
+        ...buildDerivedState(
+          legacySnapshot.locations,
+          legacySnapshot.activeLocation
+        ),
+        phaseColors: { ...legacySnapshot.phaseColors },
+      });
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      unsubscribe();
+
+      if (activeStore === store) {
+        activeStore = null;
+      }
+    };
+  }, []);
+
+  return createElement(StoreContext.Provider, {
+    value: storeRef.current,
+    children,
+  });
+}
+
+type UseStoreHook = {
+  <T>(selector: (state: AppState) => T): T;
+  getState: () => AppState;
+};
+
+export const useStore = Object.assign(useBoundStore, {
+  getState: () => getActiveStore().getState(),
+}) as UseStoreHook;
