@@ -25,8 +25,8 @@ function SectionCard({ title, icon: Icon, children }: {
 }
 
 export default function PremissasPage() {
-  const premissas = useStore((s) => s.premissas);
-  const custos = useStore((s) => s.custos);
+  const premissas = useStore((s) => s.activePremissas);
+  const custos = useStore((s) => s.activeCustos);
   const updatePremissas = useStore((s) => s.updatePremissas);
   const updateCustos = useStore((s) => s.updateCustos);
 
@@ -132,11 +132,11 @@ export default function PremissasPage() {
 
           {/* Transfer flow visual */}
           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="px-2 py-1 rounded bg-blue-500/10 border border-blue-400/30 text-blue-700">Berçário</span>
+            <span className="px-2 py-1 rounded bg-(--phase-bercario)/22 border border-(--phase-bercario)/45 text-[#2d4518]">Berçário</span>
             <span className="text-muted-foreground/60">→ {localPremissas.peso_transfer_bercario} kg →</span>
-            <span className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-400/30 text-emerald-700">Recria</span>
+            <span className="px-2 py-1 rounded bg-(--phase-recria)/12 border border-(--phase-recria)/28 text-(--phase-recria)">Recria</span>
             <span className="text-muted-foreground/60">→ {localPremissas.peso_transfer_recria} kg →</span>
-            <span className="px-2 py-1 rounded bg-amber-500/10 border border-amber-400/30 text-amber-700">Engorda</span>
+            <span className="px-2 py-1 rounded bg-(--phase-engorda)/12 border border-(--phase-engorda)/35 text-blue-900">Engorda</span>
           </div>
         </SectionCard>
 

@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, Custos } from './types';
+import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, TankPhase } from './types';
 import { PHASE_LABELS } from './types';
+import { useStore } from './store';
 
 // Augment jsPDF type for lastAutoTable property added by jspdf-autotable
 declare module 'jspdf' {
@@ -16,7 +17,7 @@ interface ReportData {
   recriaLotes: RecriaLote[];
   engordaLotes: EngordaLote[];
   premissas: Premissas;
-  custos: Custos;
+  locationName?: string;
 }
 
 const fmt = (n: number, decimals = 0) =>
@@ -49,7 +50,7 @@ const CHAR_MAP: Record<string, string> = {
   '·': '.', '•': '-',
 };
 const CHAR_RE = new RegExp(`[${Object.keys(CHAR_MAP).join('')}]`, 'g');
-const s = (text: string): string => text.replace(CHAR_RE, (ch) => CHAR_MAP[ch] || ch);
+const s = (text: unknown): string => String(text ?? '').replace(CHAR_RE, (ch) => CHAR_MAP[ch] || ch);
 
 // ═══════════════════════════════════════════════════════════════
 // CHART DRAWING HELPERS
@@ -58,10 +59,53 @@ const s = (text: string): string => text.replace(CHAR_RE, (ch) => CHAR_MAP[ch] |
 type RGB = [number, number, number];
 
 const PHASE_RGB: Record<string, RGB> = {
-  bercario: [59, 130, 246],
-  recria: [34, 197, 94],
-  engorda: [245, 158, 11],
+  bercario: [148, 186, 101],
+  recria: [243, 250, 107],
+  engorda: [37, 99, 235],
 };
+
+const HEX6 = /^#[0-9A-Fa-f]{6}$/;
+
+function hexToRgbTuple(hex: string): RGB {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return [128, 128, 128];
+  return [r, g, b];
+}
+
+/** Read phase colors from Zustand at PDF generation time; fallback to PHASE_RGB. */
+function getPhaseRgb(phase: string): RGB {
+  const hex = useStore.getState().phaseColors[phase as TankPhase];
+  if (hex && HEX6.test(hex)) {
+    const rgb = hexToRgbTuple(hex);
+    if (!rgb.some((n) => Number.isNaN(n))) return rgb;
+  }
+  return PHASE_RGB[phase] ?? [128, 128, 128];
+}
+
+function relativeLuminance(rgb: RGB): number {
+  const linear = rgb.map((v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
+}
+
+/** Dark text on light headers, white on saturated/dark headers. */
+function contrastingTextRgb(bg: RGB): RGB {
+  return relativeLuminance(bg) > 0.55 ? [15, 23, 42] : [255, 255, 255];
+}
+
+/** Alternate table row: mostly white with a hint of phase color. */
+function mixWithWhite(rgb: RGB, phaseWeight = 0.13): RGB {
+  const w = 1 - phaseWeight;
+  return [
+    Math.round(rgb[0] * phaseWeight + 255 * w),
+    Math.round(rgb[1] * phaseWeight + 255 * w),
+    Math.round(rgb[2] * phaseWeight + 255 * w),
+  ];
+}
 
 /**
  * Draw a vertical bar chart at given position.
@@ -300,131 +344,12 @@ function drawDonutChart(
   return startY + chartHeight + 4;
 }
 
-/**
- * Draw horizontal stacked bar for financial waterfall.
- */
-function drawFinancialChart(
-  doc: jsPDF,
-  x: number,
-  startY: number,
-  chartWidth: number,
-  data: { receita: number; custoRacao: number; outrasDespesas: number; lucro: number }
-): number {
-  const chartHeight = 52;
-
-  // Background card
-  doc.setFillColor(249, 250, 251);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(x, startY, chartWidth, chartHeight, 3, 3, 'FD');
-
-  // Title
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(30, 41, 59);
-  doc.text('Composição Financeira Anual', x + 5, startY + 5.5);
-
-  const barX = x + 5;
-  const barY = startY + 14;
-  const barWidth = chartWidth - 10;
-  const barHeight = 12;
-  const total = data.receita;
-
-  if (total <= 0) return startY + chartHeight + 4;
-
-  // Full bar (receita = green)
-  doc.setFillColor(16, 185, 129);
-  doc.roundedRect(barX, barY, barWidth, barHeight, 2, 2, 'F');
-
-  // Custos overlay from right (red tones)
-  const custosTotal = data.custoRacao + data.outrasDespesas;
-  const custosWidth = (custosTotal / total) * barWidth;
-  const racaoWidth = (data.custoRacao / total) * barWidth;
-
-  if (custosWidth > 0) {
-    // Other expenses
-    doc.setFillColor(239, 68, 68);
-    const otherX = barX + barWidth - custosWidth;
-    doc.roundedRect(otherX, barY, custosWidth, barHeight, 2, 2, 'F');
-    // Fix left corners
-    doc.rect(otherX, barY, Math.min(custosWidth, 3), barHeight, 'F');
-
-    // Ração (slightly different shade)
-    doc.setFillColor(248, 113, 113);
-    doc.rect(otherX, barY, racaoWidth, barHeight, 'F');
-  }
-
-  // Labels below bar
-  const lucroWidth = barWidth - custosWidth;
-  const lucroColor: RGB = data.lucro >= 0 ? [16, 185, 129] : [239, 68, 68];
-
-  // Lucro label
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(...lucroColor);
-  if (lucroWidth > 15) {
-    doc.text('Lucro', barX + lucroWidth / 2, barY + barHeight + 5, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.text(fmtBRL(data.lucro), barX + lucroWidth / 2, barY + barHeight + 9, { align: 'center' });
-  }
-
-  // Ração label
-  if (racaoWidth > 15) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(248, 113, 113);
-    const racaoCenter = barX + barWidth - custosWidth + racaoWidth / 2;
-    doc.text('Ração', racaoCenter, barY + barHeight + 5, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.text(fmtBRL(data.custoRacao), racaoCenter, barY + barHeight + 9, { align: 'center' });
-  }
-
-  // Outras despesas
-  const outrasWidth = custosWidth - racaoWidth;
-  if (outrasWidth > 15) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(239, 68, 68);
-    const outrasCenter = barX + barWidth - outrasWidth / 2;
-    doc.text('Outras', outrasCenter, barY + barHeight + 5, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.text(fmtBRL(data.outrasDespesas), outrasCenter, barY + barHeight + 9, { align: 'center' });
-  }
-
-  // Percentage labels inside bar
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-
-  if (lucroWidth > 20) {
-    const pctLucro = ((data.lucro / total) * 100).toFixed(1);
-    doc.text(`${pctLucro}%`, barX + lucroWidth / 2, barY + barHeight / 2 + 1.5, { align: 'center' });
-  }
-
-  if (racaoWidth > 20) {
-    const pctRacao = ((data.custoRacao / total) * 100).toFixed(1);
-    const racaoCenter = barX + barWidth - custosWidth + racaoWidth / 2;
-    doc.text(`${pctRacao}%`, racaoCenter, barY + barHeight / 2 + 1.5, { align: 'center' });
-  }
-
-  const outrasWidthForPct = custosWidth - racaoWidth;
-  if (outrasWidthForPct > 20) {
-    const pctOutras = ((data.outrasDespesas / total) * 100).toFixed(1);
-    const outrasCenter = barX + barWidth - outrasWidthForPct / 2;
-    doc.text(`${pctOutras}%`, outrasCenter, barY + barHeight / 2 + 1.5, { align: 'center' });
-  }
-
-  return startY + chartHeight + 4;
-}
-
 // ═══════════════════════════════════════════════════════════════
 // MAIN REPORT GENERATOR
 // ═══════════════════════════════════════════════════════════════
 
 export function generateReport(data: ReportData) {
-  const { tanks, bercarioLotes, recriaLotes, engordaLotes, premissas, custos } = data;
+  const { tanks, bercarioLotes, recriaLotes, engordaLotes, premissas } = data;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -433,11 +358,11 @@ export function generateReport(data: ReportData) {
   const contentWidth = pageWidth - marginLeft - marginRight;
   let y = 0;
 
-  // ── Colors ──
-  const primaryBlue: RGB = [37, 99, 235];
+  // ── Colors (accent = fase Engorda configurada) ──
+  const accentRgb = getPhaseRgb('engorda');
+  const accentTextRgb = contrastingTextRgb(accentRgb);
   const darkText: RGB = [30, 41, 59];
   const mutedText: RGB = [100, 116, 139];
-  const white: RGB = [255, 255, 255];
 
   // ── Helper: add page if needed ──
   const ensureSpace = (needed: number) => {
@@ -450,11 +375,11 @@ export function generateReport(data: ReportData) {
   // ── Helper: section title ──
   const sectionTitle = (title: string) => {
     ensureSpace(16);
-    doc.setFillColor(...primaryBlue);
+    doc.setFillColor(...accentRgb);
     doc.roundedRect(marginLeft, y, contentWidth, 9, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.setTextColor(...white);
+    doc.setTextColor(...accentTextRgb);
     doc.text(s(title.toUpperCase()), marginLeft + 4, y + 6.3);
     y += 13;
     doc.setTextColor(...darkText);
@@ -494,10 +419,6 @@ export function generateReport(data: ReportData) {
   const biomassEngorda = engordaLotes.reduce((s, l) => s + l.peso_total_kg, 0);
   const totalBiomass = biomassBercario + biomassRecria + biomassEngorda;
 
-  const lucro = custos.receita_venda - custos.custo_racao - custos.outras_despesas;
-  const margem = custos.receita_venda > 0 ? (lucro / custos.receita_venda) * 100 : 0;
-  const receitaEstimada = biomassEngorda * premissas.preco_venda * premissas.ciclos_ano;
-
   const countByPhase = (phase: string) => tanks.filter((t) => t.phase === phase).length;
   const totalArea = tanks.reduce((s, t) => s + t.area_ha, 0);
 
@@ -505,17 +426,17 @@ export function generateReport(data: ReportData) {
   // HEADER
   // ═══════════════════════════════════════════════════════════════
 
-  doc.setFillColor(...primaryBlue);
+  doc.setFillColor(...accentRgb);
   doc.rect(0, 0, pageWidth, 36, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.setTextColor(...white);
+  doc.setTextColor(...accentTextRgb);
   doc.text(s('Relatorio de Producao'), marginLeft, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(s('Painel de Gerenciamento de Tanques - Piscicultura'), marginLeft, 23);
+  doc.text(s(`Manati${data.locationName ? ' — ' + data.locationName : ''}`), marginLeft, 23);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', {
@@ -562,9 +483,9 @@ export function generateReport(data: ReportData) {
     halfW,
     chartH,
     [
-      { label: 'Bercario', value: racaoMesBercario, color: PHASE_RGB.bercario },
-      { label: 'Recria', value: racaoMesRecria, color: PHASE_RGB.recria },
-      { label: 'Engorda', value: racaoMesEngorda, color: PHASE_RGB.engorda },
+      { label: 'Bercario', value: racaoMesBercario, color: getPhaseRgb('bercario') },
+      { label: 'Recria', value: racaoMesRecria, color: getPhaseRgb('recria') },
+      { label: 'Engorda', value: racaoMesEngorda, color: getPhaseRgb('engorda') },
     ],
     'Consumo de Racao por Fase',
     `Total: ${fmt(racaoMesTotal, 1)} sacos/mes`,
@@ -581,9 +502,9 @@ export function generateReport(data: ReportData) {
     halfW,
     chartH,
     [
-      { label: 'Bercario', value: biomassBercario, color: PHASE_RGB.bercario, detail: `${fmt(totalFishBercario)} peixes` },
-      { label: 'Recria', value: biomassRecria, color: PHASE_RGB.recria, detail: `${fmt(totalFishRecria)} peixes` },
-      { label: 'Engorda', value: biomassEngorda, color: PHASE_RGB.engorda, detail: `${fmt(totalFishEngorda)} peixes` },
+      { label: 'Bercario', value: biomassBercario, color: getPhaseRgb('bercario'), detail: `${fmt(totalFishBercario)} peixes` },
+      { label: 'Recria', value: biomassRecria, color: getPhaseRgb('recria'), detail: `${fmt(totalFishRecria)} peixes` },
+      { label: 'Engorda', value: biomassEngorda, color: getPhaseRgb('engorda'), detail: `${fmt(totalFishEngorda)} peixes` },
     ],
     'Distribuicao de Biomassa',
     `Total: ${fmt(totalBiomass)} kg`,
@@ -591,17 +512,6 @@ export function generateReport(data: ReportData) {
   );
 
   y += chartH + 4;
-
-  // Financial waterfall chart (full width)
-  ensureSpace(58);
-  y = drawFinancialChart(doc, marginLeft, y, contentWidth, {
-    receita: custos.receita_venda,
-    custoRacao: custos.custo_racao,
-    outrasDespesas: custos.outras_despesas,
-    lucro,
-  });
-
-  y += 2;
 
   // ═══════════════════════════════════════════════════════════════
   // 3. VISÃO GERAL DOS TANQUES
@@ -636,8 +546,8 @@ export function generateReport(data: ReportData) {
       fmt(t.area_ha, 2),
     ]),
     styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: primaryBlue, textColor: white, fontStyle: 'bold', fontSize: 8 },
-    alternateRowStyles: { fillColor: [245, 248, 255] },
+    headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
     theme: 'grid',
   });
 
@@ -649,6 +559,7 @@ export function generateReport(data: ReportData) {
 
   if (bercarioLotes.length > 0) {
     sectionTitle('Lotes - Bercario');
+    const headB = getPhaseRgb('bercario');
 
     autoTable(doc, {
       startY: y,
@@ -665,8 +576,13 @@ export function generateReport(data: ReportData) {
         fmt(l.racao_total_sc, 1),
       ]),
       styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: [59, 130, 246], textColor: white, fontStyle: 'bold', fontSize: 7.5 },
-      alternateRowStyles: { fillColor: [239, 246, 255] },
+      headStyles: {
+        fillColor: headB,
+        textColor: contrastingTextRgb(headB),
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      alternateRowStyles: { fillColor: mixWithWhite(headB) },
       theme: 'grid',
     });
 
@@ -679,6 +595,7 @@ export function generateReport(data: ReportData) {
 
   if (recriaLotes.length > 0) {
     sectionTitle('Lotes - Recria');
+    const headR = getPhaseRgb('recria');
 
     autoTable(doc, {
       startY: y,
@@ -695,8 +612,13 @@ export function generateReport(data: ReportData) {
         `${l.periodo_meses}`,
       ]),
       styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: [34, 197, 94], textColor: white, fontStyle: 'bold', fontSize: 7.5 },
-      alternateRowStyles: { fillColor: [240, 253, 244] },
+      headStyles: {
+        fillColor: headR,
+        textColor: contrastingTextRgb(headR),
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      alternateRowStyles: { fillColor: mixWithWhite(headR) },
       theme: 'grid',
     });
 
@@ -709,6 +631,7 @@ export function generateReport(data: ReportData) {
 
   if (engordaLotes.length > 0) {
     sectionTitle('Lotes - Engorda');
+    const headE = getPhaseRgb('engorda');
 
     autoTable(doc, {
       startY: y,
@@ -727,8 +650,13 @@ export function generateReport(data: ReportData) {
         `${l.periodo_meses}`,
       ]),
       styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: [245, 158, 11], textColor: white, fontStyle: 'bold', fontSize: 7.5 },
-      alternateRowStyles: { fillColor: [255, 251, 235] },
+      headStyles: {
+        fillColor: headE,
+        textColor: contrastingTextRgb(headE),
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      alternateRowStyles: { fillColor: mixWithWhite(headE) },
       theme: 'grid',
     });
 
@@ -767,38 +695,6 @@ export function generateReport(data: ReportData) {
   y += 4;
 
   // ═══════════════════════════════════════════════════════════════
-  // 9. RESUMO FINANCEIRO
-  // ═══════════════════════════════════════════════════════════════
-
-  // Ensure entire financial summary + lucro box stays on the same page
-  // title(13) + 4 kvLines(22) + spacing(4) + lucroBox(18) = ~57mm
-  ensureSpace(60);
-
-  sectionTitle('Resumo Financeiro Anual');
-
-  kvLine('Receita de Venda (cadastrada)', fmtBRL(custos.receita_venda));
-
-  kvLine('Receita Estimada (por biomassa)', fmtBRL(receitaEstimada));
-  kvLine('Custo de Racao', fmtBRL(custos.custo_racao));
-  kvLine('Outras Despesas', fmtBRL(custos.outras_despesas));
-  y += 2;
-
-  // Lucro highlight box
-  ensureSpace(18);
-  const boxColor: RGB = lucro >= 0 ? [16, 185, 129] : [239, 68, 68];
-  doc.setFillColor(...boxColor);
-  doc.roundedRect(marginLeft, y, contentWidth, 14, 2, 2, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...white);
-  doc.text('LUCRO ANUAL ESTIMADO', marginLeft + 4, y + 6);
-  doc.text(fmtBRL(lucro), pageWidth - marginRight - 4, y + 6, { align: 'right' });
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Margem: ${fmt(margem, 1)}%`, pageWidth - marginRight - 4, y + 11.5, { align: 'right' });
-  y += 20;
-
-  // ═══════════════════════════════════════════════════════════════
   // FOOTER
   // ═══════════════════════════════════════════════════════════════
 
@@ -809,7 +705,7 @@ export function generateReport(data: ReportData) {
     doc.setFontSize(7);
     doc.setTextColor(...mutedText);
     doc.text(
-      s(`Painel de Gerenciamento de Tanques - Piscicultura | Pagina ${i} de ${totalPages}`),
+      s(`Manati${data.locationName ? ' — ' + data.locationName : ''} | Pagina ${i} de ${totalPages}`),
       pageWidth / 2,
       pageH - 8,
       { align: 'center' }
@@ -817,5 +713,8 @@ export function generateReport(data: ReportData) {
   }
 
   // ── Save ──
-  doc.save(`relatorio_piscicultura_${now.toISOString().slice(0, 10)}.pdf`);
+  const locationSlug = data.locationName
+    ? data.locationName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_')
+    : '';
+  doc.save(`relatorio_piscicultura${locationSlug ? '_' + locationSlug : ''}_${now.toISOString().slice(0, 10)}.pdf`);
 }

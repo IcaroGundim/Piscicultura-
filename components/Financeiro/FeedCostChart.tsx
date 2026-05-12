@@ -35,9 +35,12 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export default function FeedCostChart() {
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
+  const phaseColors = useStore((s) => s.phaseColors);
+
+  const colorFor = (phase: TankPhase) => phaseColors[phase] ?? PHASE_COLORS[phase];
 
   const { feedByPhase, totalRacaoMes } = useMemo(() => {
     const data = [
@@ -112,7 +115,7 @@ export default function FeedCostChart() {
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="racao_mes" name="Mensal" radius={[8, 8, 0, 0]} maxBarSize={60} animationBegin={200} animationDuration={800}>
               {feedByPhase.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={PHASE_COLORS[entry.phase as TankPhase]} />
+                <Cell key={`cell-${index}`} fill={colorFor(entry.phase as TankPhase)} />
               ))}
             </Bar>
           </BarChart>
@@ -121,23 +124,55 @@ export default function FeedCostChart() {
 
       {/* Summary footer */}
       <div className="mt-4 grid grid-cols-3 gap-3">
-        {feedByPhase.map((phase) => (
-          <div
-            key={phase.phase}
-            className="rounded-xl border p-3 text-center"
-            style={{
-              backgroundColor: `${PHASE_COLORS[phase.phase as TankPhase]}14`,
-              borderColor: `${PHASE_COLORS[phase.phase as TankPhase]}20`,
-            }}
-          >
-            <div className="flex items-center justify-center gap-1.5 mb-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PHASE_COLORS[phase.phase as TankPhase] }} />
-              <span className="text-xs text-muted-foreground uppercase">{phase.label}</span>
+        {feedByPhase.map((phase) => {
+          const color = colorFor(phase.phase as TankPhase);
+          const share = totalRacaoMes > 0 ? (phase.racao_mes / totalRacaoMes) * 100 : 0;
+          return (
+            <div
+              key={phase.phase}
+              className="group relative overflow-hidden rounded-xl border p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+              style={{
+                background: `linear-gradient(135deg, ${color}1A 0%, ${color}08 100%)`,
+                borderColor: `${color}33`,
+              }}
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-0 h-full w-1"
+                style={{ backgroundColor: color }}
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full opacity-20 blur-2xl transition-opacity duration-300 group-hover:opacity-40"
+                style={{ backgroundColor: color }}
+              />
+
+              <div className="relative flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {phase.label}
+                </span>
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums"
+                  style={{ backgroundColor: `${color}1F`, color }}
+                >
+                  {share.toFixed(0)}%
+                </span>
+              </div>
+
+              <div className="relative mt-2 flex items-baseline gap-1">
+                <span className="text-lg font-bold tabular-nums text-foreground leading-none">
+                  {phase.racao_mes.toFixed(1)}
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">sc/mês</span>
+              </div>
+
+              <div className="relative mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{phase.qtd_lotes} lote{phase.qtd_lotes === 1 ? '' : 's'}</span>
+                <span className="tabular-nums">{phase.racao_total.toFixed(0)} sc total</span>
+              </div>
             </div>
-            <p className="text-xs font-semibold text-foreground">{phase.racao_mes.toFixed(1)} sc/mês</p>
-            <p className="text-xs text-muted-foreground">{phase.qtd_lotes} lote(s)</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

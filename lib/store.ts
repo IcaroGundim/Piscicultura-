@@ -1,23 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, Custos, TankPhase } from './types';
-import {
-  initialTanks,
-  initialBercarioLotes,
-  initialRecriaLotes,
-  initialEngordaLotes,
-  initialPremissas,
-  initialCustos,
-} from './initialData';
+import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, Custos, TankPhase, LocationKey, LocationData } from './types';
+import { initialLocations } from './initialData';
 
 interface AppState {
-  tanks: Tank[];
-  bercarioLotes: BercarioLote[];
-  recriaLotes: RecriaLote[];
-  engordaLotes: EngordaLote[];
-  premissas: Premissas;
-  custos: Custos;
+  activeLocation: LocationKey;
+  locations: Record<string, LocationData>;
 
+  // Derived data access for active location
+  activeTanks: Tank[];
+  activeBercarioLotes: BercarioLote[];
+  activeRecriaLotes: RecriaLote[];
+  activeEngordaLotes: EngordaLote[];
+  activePremissas: Premissas;
+  activeCustos: Custos;
+
+  // Actions
+  setLocation: (key: LocationKey) => void;
   updateTankPhase: (tankId: number, newPhase: TankPhase, subfase?: string) => void;
   updateBercarioLote: (tankId: number, data: Partial<BercarioLote>) => void;
   updateRecriaLote: (tankId: number, data: Partial<RecriaLote>) => void;
@@ -28,44 +27,82 @@ interface AppState {
   addRecriaLote: (lote: RecriaLote) => void;
   addEngordaLote: (lote: EngordaLote) => void;
   removeLoteForTank: (tankId: number) => void;
+  addTank: (tank: Tank) => void;
+  removeTank: (tankId: number) => void;
+
+  // Phase color configuration
+  phaseColors: Record<TankPhase, string>;
+  setPhaseColor: (phase: TankPhase, color: string) => void;
+}
+
+function updateLocationInState(
+  state: AppState,
+  updater: (loc: LocationData) => Partial<LocationData>
+): Partial<AppState> {
+  const loc = state.locations[state.activeLocation];
+  const updated = { ...loc, ...updater(loc) };
+  const newLocations = { ...state.locations, [state.activeLocation]: updated };
+  const derived = getDerivedState(newLocations, state.activeLocation);
+  return { locations: newLocations, ...derived };
+}
+
+function getDerivedState(locations: Record<string, LocationData>, activeLocation: string) {
+  const loc = locations[activeLocation];
+  return {
+    activeTanks: loc.tanks,
+    activeBercarioLotes: loc.bercarioLotes,
+    activeRecriaLotes: loc.recriaLotes,
+    activeEngordaLotes: loc.engordaLotes,
+    activePremissas: loc.premissas,
+    activeCustos: loc.custos,
+  };
 }
 
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
-      tanks: initialTanks,
-      bercarioLotes: initialBercarioLotes,
-      recriaLotes: initialRecriaLotes,
-      engordaLotes: initialEngordaLotes,
-      premissas: initialPremissas,
-      custos: initialCustos,
+    (set, get) => ({
+      activeLocation: 'rondonia' as LocationKey,
+      locations: initialLocations as Record<string, LocationData>,
+
+      // These are set dynamically via getDerivedState
+      activeTanks: initialLocations.rondonia.tanks,
+      activeBercarioLotes: initialLocations.rondonia.bercarioLotes,
+      activeRecriaLotes: initialLocations.rondonia.recriaLotes,
+      activeEngordaLotes: initialLocations.rondonia.engordaLotes,
+      activePremissas: initialLocations.rondonia.premissas,
+      activeCustos: initialLocations.rondonia.custos,
+
+      phaseColors: { bercario: '#94ba65', recria: '#f3fa6b', engorda: '#2563eb', vazio: '#52525b' },
+
+      setLocation: (key: LocationKey) => {
+        const state = get();
+        const derived = getDerivedState(state.locations, key);
+        set({ activeLocation: key, ...derived });
+      },
 
       updateTankPhase: (tankId, newPhase, subfase) =>
         set((state) => {
-          const tank = state.tanks.find((t) => t.id === tankId);
+          const loc = state.locations[state.activeLocation];
+          const tank = loc.tanks.find((t) => t.id === tankId);
           if (!tank) return state;
 
-          const updatedTanks = state.tanks.map((t) =>
+          const updatedTanks = loc.tanks.map((t) =>
             t.id === tankId ? { ...t, phase: newPhase, subfase } : t
           );
 
-          // If phase didn't actually change, just update subfase
           if (tank.phase === newPhase) {
-            return { tanks: updatedTanks };
+            return updateLocationInState(state, () => ({ tanks: updatedTanks }));
           }
 
-          // Find existing lote in the OLD phase (use nullish coalescing)
-          const oldBercario = state.bercarioLotes.find((l) => l.tankId === tankId);
-          const oldRecria = state.recriaLotes.find((l) => l.tankId === tankId);
-          const oldEngorda = state.engordaLotes.find((l) => l.tankId === tankId);
+          const oldBercario = loc.bercarioLotes.find((l) => l.tankId === tankId);
+          const oldRecria = loc.recriaLotes.find((l) => l.tankId === tankId);
+          const oldEngorda = loc.engordaLotes.find((l) => l.tankId === tankId);
           const existing = oldBercario ?? oldRecria ?? oldEngorda;
 
-          // Remove from ALL phase arrays (old phase cleanup)
-          let bercarioLotes = state.bercarioLotes.filter((l) => l.tankId !== tankId);
-          let recriaLotes = state.recriaLotes.filter((l) => l.tankId !== tankId);
-          let engordaLotes = state.engordaLotes.filter((l) => l.tankId !== tankId);
+          let bercarioLotes = loc.bercarioLotes.filter((l) => l.tankId !== tankId);
+          let recriaLotes = loc.recriaLotes.filter((l) => l.tankId !== tankId);
+          let engordaLotes = loc.engordaLotes.filter((l) => l.tankId !== tankId);
 
-          // If there was an existing lote, migrate it to the new phase
           if (existing && newPhase !== 'vazio') {
             const common = {
               tankId,
@@ -103,66 +140,121 @@ export const useStore = create<AppState>()(
             }
           }
 
-          return { tanks: updatedTanks, bercarioLotes, recriaLotes, engordaLotes };
+          return updateLocationInState(state, () => ({
+            tanks: updatedTanks,
+            bercarioLotes,
+            recriaLotes,
+            engordaLotes,
+          }));
         }),
 
       updateBercarioLote: (tankId, data) =>
-        set((state) => ({
-          bercarioLotes: state.bercarioLotes.map((l) =>
+        set((state) => updateLocationInState(state, (loc) => ({
+          bercarioLotes: loc.bercarioLotes.map((l) =>
             l.tankId === tankId ? { ...l, ...data } : l
           ),
-        })),
+        }))),
 
       updateRecriaLote: (tankId, data) =>
-        set((state) => ({
-          recriaLotes: state.recriaLotes.map((l) =>
+        set((state) => updateLocationInState(state, (loc) => ({
+          recriaLotes: loc.recriaLotes.map((l) =>
             l.tankId === tankId ? { ...l, ...data } : l
           ),
-        })),
+        }))),
 
       updateEngordaLote: (tankId, data) =>
-        set((state) => ({
-          engordaLotes: state.engordaLotes.map((l) =>
+        set((state) => updateLocationInState(state, (loc) => ({
+          engordaLotes: loc.engordaLotes.map((l) =>
             l.tankId === tankId ? { ...l, ...data } : l
           ),
-        })),
+        }))),
 
       updatePremissas: (data) =>
-        set((state) => ({ premissas: { ...state.premissas, ...data } })),
+        set((state) => updateLocationInState(state, (loc) => ({
+          premissas: { ...loc.premissas, ...data },
+        }))),
 
       updateCustos: (data) =>
-        set((state) => ({ custos: { ...state.custos, ...data } })),
+        set((state) => updateLocationInState(state, (loc) => ({
+          custos: { ...loc.custos, ...data },
+        }))),
 
       addBercarioLote: (lote) =>
-        set((state) => ({ bercarioLotes: [...state.bercarioLotes, lote] })),
+        set((state) => updateLocationInState(state, (loc) => ({
+          bercarioLotes: [...loc.bercarioLotes, lote],
+        }))),
 
       addRecriaLote: (lote) =>
-        set((state) => ({ recriaLotes: [...state.recriaLotes, lote] })),
+        set((state) => updateLocationInState(state, (loc) => ({
+          recriaLotes: [...loc.recriaLotes, lote],
+        }))),
 
       addEngordaLote: (lote) =>
-        set((state) => ({ engordaLotes: [...state.engordaLotes, lote] })),
+        set((state) => updateLocationInState(state, (loc) => ({
+          engordaLotes: [...loc.engordaLotes, lote],
+        }))),
 
       removeLoteForTank: (tankId) =>
-        set((state) => ({
-          bercarioLotes: state.bercarioLotes.filter((l) => l.tankId !== tankId),
-          recriaLotes: state.recriaLotes.filter((l) => l.tankId !== tankId),
-          engordaLotes: state.engordaLotes.filter((l) => l.tankId !== tankId),
-        })),
+        set((state) => updateLocationInState(state, (loc) => ({
+          bercarioLotes: loc.bercarioLotes.filter((l) => l.tankId !== tankId),
+          recriaLotes: loc.recriaLotes.filter((l) => l.tankId !== tankId),
+          engordaLotes: loc.engordaLotes.filter((l) => l.tankId !== tankId),
+        }))),
+
+      addTank: (tank) =>
+        set((state) => updateLocationInState(state, (loc) => ({
+          tanks: [...loc.tanks, tank],
+        }))),
+
+      removeTank: (tankId) =>
+        set((state) => updateLocationInState(state, (loc) => ({
+          tanks: loc.tanks.filter((t) => t.id !== tankId),
+          bercarioLotes: loc.bercarioLotes.filter((l) => l.tankId !== tankId),
+          recriaLotes: loc.recriaLotes.filter((l) => l.tankId !== tankId),
+          engordaLotes: loc.engordaLotes.filter((l) => l.tankId !== tankId),
+        }))),
+
+      setPhaseColor: (phase, color) => set((s) => ({ phaseColors: { ...s.phaseColors, [phase]: color } })),
     }),
     {
       name: 'piscicultura-storage',
-      version: 1,
+      version: 4,
       migrate: (persistedState, version) => {
-        if (version === 0) {
-          // Migration from unversioned storage: ensure all fields exist
-          const state = persistedState as Partial<AppState>;
+        if (version === 3) {
+          const state = persistedState as AppState;
+          const rondoniaCustos = state.locations?.rondonia?.custos;
+          const isOldDefaults =
+            rondoniaCustos?.receita_venda === 450000 &&
+            rondoniaCustos?.custo_racao === 180000 &&
+            rondoniaCustos?.outras_despesas === 45000;
+          if (isOldDefaults && state.locations?.rondonia) {
+            state.locations.rondonia.custos = { ...initialLocations.rondonia.custos };
+            const derived = getDerivedState(state.locations, state.activeLocation);
+            return { ...state, ...derived };
+          }
+          return state;
+        }
+        if (version === 0 || version === 1 || version === 2) {
+          // Migration from v0/v1 (flat structure) to v2 (multi-location)
+          const state = persistedState as Record<string, unknown>;
+          const rondoniaData: LocationData = {
+            tanks: (state.tanks as Tank[]) ?? initialLocations.rondonia.tanks,
+            bercarioLotes: (state.bercarioLotes as BercarioLote[]) ?? initialLocations.rondonia.bercarioLotes,
+            recriaLotes: (state.recriaLotes as RecriaLote[]) ?? initialLocations.rondonia.recriaLotes,
+            engordaLotes: (state.engordaLotes as EngordaLote[]) ?? initialLocations.rondonia.engordaLotes,
+            premissas: (state.premissas as Premissas) ?? initialLocations.rondonia.premissas,
+            custos: (state.custos as Custos) ?? initialLocations.rondonia.custos,
+          };
+          const locations: Record<string, LocationData> = {
+            rondonia: rondoniaData,
+            acre: initialLocations.acre,
+          };
+          const derived = getDerivedState(locations, 'rondonia');
           return {
-            tanks: state.tanks ?? initialTanks,
-            bercarioLotes: state.bercarioLotes ?? initialBercarioLotes,
-            recriaLotes: state.recriaLotes ?? initialRecriaLotes,
-            engordaLotes: state.engordaLotes ?? initialEngordaLotes,
-            premissas: state.premissas ?? initialPremissas,
-            custos: state.custos ?? initialCustos,
+            activeLocation: 'rondonia' as LocationKey,
+            locations,
+            ...derived,
+            phaseColors: { bercario: '#94ba65', recria: '#f3fa6b', engorda: '#2563eb', vazio: '#52525b' },
           } as AppState;
         }
         return persistedState as AppState;

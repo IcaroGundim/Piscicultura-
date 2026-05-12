@@ -18,10 +18,10 @@ const filterOptions: Array<{ value: TankPhase | 'all'; label: string }> = [
 ];
 
 export default function TankGrid() {
-  const tanks = useStore((s) => s.tanks);
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
+  const tanks = useStore((s) => s.activeTanks);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
   const [selectedTankId, setSelectedTankId] = useState<number | null>(null);
   const [filter, setFilter] = useState<TankPhase | 'all'>('all');
 
@@ -64,7 +64,7 @@ export default function TankGrid() {
         </div>
 
         {/* Tank List */}
-        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2 pb-4">
+        <div className="flex-1 pr-2 space-y-2 pb-4">
           {filteredTanks.map((tank, idx) => (
             <TankCard
               key={tank.id}

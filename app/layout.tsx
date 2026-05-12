@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 import TopNav from '@/components/TopNav';
 import { ReactGrabPlugin } from '@/components/ReactGrabPlugin';
+import { PhaseColorSync } from '@/components/PhaseColorSync';
 
 export const metadata: Metadata = {
-  title: 'AquaGest — Piscicultura',
+  title: 'Manati',
   description: 'Sistema de gestão de tanques de tambaqui',
 };
 
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full font-sans text-foreground">
         <ReactGrabPlugin />
+        <PhaseColorSync />
         <div className="flex flex-col min-h-screen">
           <TopNav />
           <main className="flex-1 min-w-0 bg-background">{children}</main>

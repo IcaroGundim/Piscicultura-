@@ -5,16 +5,15 @@ import { useStore } from '@/lib/store';
 import type { TankPhase } from '@/lib/types';
 import { PHASE_LABELS, PHASE_COLORS } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Droplets, Scale, Fish, DollarSign, TrendingUp } from 'lucide-react';
+import { Droplets, Scale, Fish, TrendingUp } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 
 export default function TankFinancialTable() {
-  const tanks = useStore((s) => s.tanks);
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
-  const premissas = useStore((s) => s.premissas);
-
+  const tanks = useStore((s) => s.activeTanks);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
+  const phaseColors = useStore((s) => s.phaseColors);
   const getLoteData = (tankId: number, phase: TankPhase) => {
     if (phase === 'bercario') return bercarioLotes.find((l) => l.tankId === tankId);
     if (phase === 'recria') return recriaLotes.find((l) => l.tankId === tankId);
@@ -32,13 +31,12 @@ export default function TankFinancialTable() {
         return {
           qtd: acc.qtd + lote.qtd_peixes,
           biomass: acc.biomass + lote.peso_total_kg,
-          revenue: acc.revenue + lote.peso_total_kg * premissas.preco_venda * premissas.ciclos_ano,
           feed: acc.feed + lote.racao_mes_sc,
         };
       },
-      { qtd: 0, biomass: 0, revenue: 0, feed: 0 }
+      { qtd: 0, biomass: 0, feed: 0 }
     );
-  }, [activeTanks, premissas]);
+  }, [activeTanks]);
 
   return (
     <div className="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
@@ -47,7 +45,7 @@ export default function TankFinancialTable() {
           Detalhamento por Tanque
         </h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {activeTanks.length} tanques ativos · {premissas.preco_venda} R$/kg
+          {activeTanks.length} tanques ativos
         </p>
       </div>
 
@@ -81,11 +79,6 @@ export default function TankFinancialTable() {
                 </th>
                 <th role="columnheader" scope="col" aria-sort="none" className="text-right px-4 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                   <div className="flex items-center justify-end gap-1">
-                    <DollarSign className="w-3 h-3" /> Receita Est.
-                  </div>
-                </th>
-                <th role="columnheader" scope="col" aria-sort="none" className="text-right px-4 py-2.5 font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                  <div className="flex items-center justify-end gap-1">
                     <TrendingUp className="w-3 h-3" /> Ração/mês
                   </div>
                 </th>
@@ -97,7 +90,6 @@ export default function TankFinancialTable() {
                 const qtd = lote?.qtd_peixes ?? 0;
                 const biomass = lote?.peso_total_kg ?? 0;
                 const density = lote?.densidade_kg_m2 ?? 0;
-                const revenue = biomass * premissas.preco_venda * premissas.ciclos_ano;
                 const feedMonthly = lote?.racao_mes_sc ?? 0;
 
                 return (
@@ -122,9 +114,9 @@ export default function TankFinancialTable() {
                         role="status"
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
                         style={{
-                          backgroundColor: `${PHASE_COLORS[tank.phase]}15`,
-                          color: PHASE_COLORS[tank.phase],
-                          borderColor: `${PHASE_COLORS[tank.phase]}30`,
+                          backgroundColor: `${phaseColors[tank.phase] ?? PHASE_COLORS[tank.phase]}15`,
+                          color: phaseColors[tank.phase] ?? PHASE_COLORS[tank.phase],
+                          borderColor: `${phaseColors[tank.phase] ?? PHASE_COLORS[tank.phase]}30`,
                         }}
                       >
                         {PHASE_LABELS[tank.phase]}
@@ -138,9 +130,6 @@ export default function TankFinancialTable() {
                     </td>
                     <td role="cell" className="px-4 py-3 text-right font-mono text-sm text-foreground tabular-nums whitespace-nowrap">
                       {density > 0 ? `${density.toFixed(2)} kg/m²` : '—'}
-                    </td>
-                    <td role="cell" className="px-4 py-3 text-right font-mono text-sm font-medium text-emerald-700 tabular-nums whitespace-nowrap">
-                      {revenue > 0 ? `R$ ${revenue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'}
                     </td>
                     <td role="cell" className="px-4 py-3 text-right font-mono text-sm text-amber-700 tabular-nums whitespace-nowrap">
                       {feedMonthly > 0 ? `${feedMonthly.toFixed(1)} sc` : '—'}
@@ -164,9 +153,6 @@ export default function TankFinancialTable() {
                 </td>
                 <td role="cell" className="px-4 py-3 text-right font-mono text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                   —
-                </td>
-                <td role="cell" className="px-4 py-3 text-right font-bold text-emerald-700 font-mono text-sm tabular-nums whitespace-nowrap">
-                  {totals.revenue > 0 ? `R$ ${totals.revenue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'}
                 </td>
                 <td role="cell" className="px-4 py-3 text-right font-bold text-amber-700 font-mono text-sm tabular-nums whitespace-nowrap">
                   {totals.feed > 0 ? `${totals.feed.toFixed(1)} sc` : '—'}

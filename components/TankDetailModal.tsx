@@ -12,29 +12,29 @@ interface TankDetailModalProps {
 }
 
 export default function TankDetailModal({ tank, onClose }: TankDetailModalProps) {
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
 
   const open = tank !== null;
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(v: boolean) => !v && onClose()}>
       <DialogPrimitive.Portal>
-        {/* Backdrop 100% transparente - o Kanban fica visível atrás */}
+        {/* Backdrop com desfoque sutil */}
         <DialogPrimitive.Backdrop
-          className="fixed inset-0 z-50 bg-transparent data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+          className="fixed inset-0 z-50 bg-black/15 backdrop-blur-[2px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
         />
 
         {/* Popup centralizado */}
         <DialogPrimitive.Popup
           className={cn(
             'fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
-            'w-full max-w-xl h-full max-h-[90vh] overflow-hidden',
+            'w-full max-w-xl h-auto max-h-[90vh] overflow-hidden',
             'rounded-2xl border border-border bg-card shadow-2xl',
-            'duration-200 outline-none',
-            'data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95',
-            'data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95'
+            'duration-100 outline-none',
+            'data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98',
+            'data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-98'
           )}
         >
           {tank && (

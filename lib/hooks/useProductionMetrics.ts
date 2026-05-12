@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
 
 export function useProductionMetrics() {
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
-  const premissas = useStore((s) => s.premissas);
-  const custos = useStore((s) => s.custos);
-  const tanks = useStore((s) => s.tanks);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
+  const premissas = useStore((s) => s.activePremissas);
+  const custos = useStore((s) => s.activeCustos);
+  const tanks = useStore((s) => s.activeTanks);
 
   return useMemo(() => {
     const allLotes = [...bercarioLotes, ...recriaLotes, ...engordaLotes];

@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Scale } from 'lucide-react';
 
 import { PHASE_COLORS, PHASE_LABELS } from '@/lib/types';
+import type { TankPhase } from '@/lib/types';
 import EmptyState from '@/components/EmptyState';
 
 interface TooltipPayloadItem {
@@ -39,10 +40,11 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 }
 
 export default function RevenueDistribution() {
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
-  const premissas = useStore((s) => s.premissas);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
+  const premissas = useStore((s) => s.activePremissas);
+  const phaseColors = useStore((s) => s.phaseColors);
 
   const { biomassByPhase, totalBiomass, receitaEstimada, pieData } = useMemo(() => {
     const phases = [
@@ -72,12 +74,12 @@ export default function RevenueDistribution() {
     const pie = phases.map((p) => ({
       name: p.label,
       value: p.biomass,
-      color: PHASE_COLORS[p.phase as keyof typeof PHASE_COLORS],
+      color: phaseColors[p.phase as TankPhase] ?? PHASE_COLORS[p.phase as TankPhase],
       fish: p.fish,
     }));
 
     return { biomassByPhase: phases, totalBiomass: total, receitaEstimada: receita, pieData: pie };
-  }, [bercarioLotes, recriaLotes, engordaLotes, premissas]);
+  }, [bercarioLotes, recriaLotes, engordaLotes, premissas, phaseColors]);
 
   if (biomassByPhase.length === 0) {
     return (
@@ -105,15 +107,15 @@ export default function RevenueDistribution() {
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[240px]">
+      <div className="flex-1 w-full min-h-[380px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={pieData}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={90}
+              innerRadius={90}
+              outerRadius={135}
               paddingAngle={3}
               cornerRadius={6}
               dataKey="value"
@@ -136,7 +138,7 @@ export default function RevenueDistribution() {
           return (
             <div key={phase.phase} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PHASE_COLORS[phase.phase as keyof typeof PHASE_COLORS] }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: phaseColors[phase.phase as TankPhase] ?? PHASE_COLORS[phase.phase as TankPhase] }} />
                 <span className="text-foreground font-medium">{phase.label}</span>
               </div>
               <div className="flex items-center gap-3">

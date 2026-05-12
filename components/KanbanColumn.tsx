@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useLayoutEffect } from 'react';
+import gsap from 'gsap';
 import type { Tank, TankPhase } from '@/lib/types';
 import { PHASE_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -14,24 +16,25 @@ interface KanbanColumnProps {
 }
 
 const phaseHeaderBgMap: Record<TankPhase, string> = {
-  bercario: 'bg-blue-500/5',
-  recria: 'bg-emerald-500/5',
-  engorda: 'bg-amber-500/5',
-  vazio: 'bg-slate-500/5',
+  bercario: 'bg-(--phase-bercario)/10',
+  recria: 'bg-(--phase-recria)/6',
+  engorda: 'bg-(--phase-engorda)/8',
+  vazio: 'bg-zinc-500/5',
 };
 
 const phaseBorderTopMap: Record<TankPhase, string> = {
-  bercario: 'border-t-blue-500',
-  recria: 'border-t-emerald-500',
-  engorda: 'border-t-amber-500',
-  vazio: 'border-t-slate-400',
+  bercario: 'border-t-(--phase-bercario)',
+  recria: 'border-t-(--phase-recria)',
+  engorda: 'border-t-(--phase-engorda)',
+  vazio: 'border-t-zinc-500',
 };
 
-const phaseCounterBgMap: Record<TankPhase, string> = {
-  bercario: 'bg-blue-500',
-  recria: 'bg-emerald-500',
-  engorda: 'bg-amber-500',
-  vazio: 'bg-slate-400',
+/** Contador da coluna: fundo da fase + texto com contraste */
+const phaseCounterClassMap: Record<TankPhase, string> = {
+  bercario: 'bg-(--phase-bercario) text-white',
+  recria: 'bg-(--phase-recria) text-white',
+  engorda: 'bg-(--phase-engorda) text-white',
+  vazio: 'bg-zinc-500 text-white',
 };
 
 export default function KanbanColumn({
@@ -41,6 +44,48 @@ export default function KanbanColumn({
   onSelectTank,
 }: KanbanColumnProps) {
   const isEmpty = tanks.length === 0;
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const prevTanksRef = useRef<string>('');
+
+  useLayoutEffect(() => {
+    const tankIds = tanks.map((t) => t.id).join(',');
+    const prevTankIds = prevTanksRef.current.split(',').filter(Boolean);
+    const currentIds = tankIds.split(',').filter(Boolean);
+
+    // Only animate on initial mount or when tanks actually change
+    if (prevTanksRef.current === tankIds) return;
+
+    const newTankIds = currentIds.filter((id) => !prevTankIds.includes(id));
+
+    if (!cardsRef.current) {
+      prevTanksRef.current = tankIds;
+      return;
+    }
+
+    // Animate only new tanks
+    if (newTankIds.length > 0) {
+      const newCards = cardsRef.current.querySelectorAll(
+        `.tank-card-animate[data-tank-id="${newTankIds.join('"], .tank-card-animate[data-tank-id="')}"]`
+      );
+
+      if (newCards.length > 0) {
+        gsap.fromTo(
+          newCards,
+          { opacity: 0, y: 20, scale: 0.96 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.4,
+            ease: 'power2.out',
+            stagger: { each: 0.08, from: 'start' },
+          }
+        );
+      }
+    }
+
+    prevTanksRef.current = tankIds;
+  }, [tanks]);
 
   return (
     <div
@@ -65,8 +110,8 @@ export default function KanbanColumn({
         </span>
         <span
           className={cn(
-            'inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold text-white',
-            phaseCounterBgMap[phase]
+            'inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold',
+            phaseCounterClassMap[phase]
           )}
         >
           {tanks.length}
@@ -74,17 +119,18 @@ export default function KanbanColumn({
       </div>
 
       {/* Scrollable Card Area */}
-      <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-3 custom-scrollbar">
+      <div ref={cardsRef} className="flex-1 overflow-y-auto px-3 pt-3 pb-4 space-y-3 custom-scrollbar">
         {tanks.map((tank, idx) => (
-          <TankCard
-            key={tank.id}
-            tank={tank}
-            isSelected={selectedTankId === tank.id}
-            onClick={() =>
-              onSelectTank(selectedTankId === tank.id ? null : tank.id)
-            }
-            animationDelay={idx * 30}
-          />
+          <div key={tank.id} className="tank-card-animate" data-tank-id={tank.id}>
+            <TankCard
+              tank={tank}
+              isSelected={selectedTankId === tank.id}
+              onClick={() =>
+                onSelectTank(selectedTankId === tank.id ? null : tank.id)
+              }
+              animationDelay={idx * 30}
+            />
+          </div>
         ))}
 
         {isEmpty && (

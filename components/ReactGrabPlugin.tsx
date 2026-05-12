@@ -69,12 +69,12 @@ export function ReactGrabPlugin() {
               import('@/lib/store').then((mod) => {
                 const state = mod.useStore.getState();
                 console.group('🔷 AquaGest Store State');
-                console.log('Tanques:', state.tanks.length);
-                console.log('Lotes Berçário:', state.bercarioLotes.length);
-                console.log('Lotes Recria:', state.recriaLotes.length);
-                console.log('Lotes Engorda:', state.engordaLotes.length);
-                console.log('Premissas:', state.premissas);
-                console.log('Custos:', state.custos);
+                console.log('Tanques:', state.activeTanks.length);
+                console.log('Lotes Berçário:', state.activeBercarioLotes.length);
+                console.log('Lotes Recria:', state.activeRecriaLotes.length);
+                console.log('Lotes Engorda:', state.activeEngordaLotes.length);
+                console.log('Premissas:', state.activePremissas);
+                console.log('Custos:', state.activeCustos);
                 console.groupEnd();
               });
             },

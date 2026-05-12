@@ -66,11 +66,21 @@
   --input: #d3def0;
   --ring: #3b82f6;
 
-  /* Phase colors */
-  --bercario: #3b82f6;
-  --recria: #16a34a;
-  --engorda: #d97706;
-  --vazio: #64748b;
+  /* Phase colors (tanques / gráficos) */
+  --bercario: #94ba65;
+  --recria: #f3fa6b;
+  --engorda: #2563eb;
+  --vazio: #52525b;
+
+  /* Phase colors: hex for Tailwind bg-(--phase-*)/opacity; RGB tuples for rgba(var(--phase-*-rgb), a) */
+  --phase-bercario: #94ba65;
+  --phase-recria: #f3fa6b;
+  --phase-engorda: #2563eb;
+  --phase-vazio: #52525b;
+  --phase-bercario-rgb: 148, 186, 101;
+  --phase-recria-rgb: 243, 250, 107;
+  --phase-engorda-rgb: 37, 99, 235;
+  --phase-vazio-rgb: 82, 82, 91;
 
   --radius: 0.85rem;
   --font-syne: var(--font-heading);
@@ -140,6 +150,16 @@
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: scaleY(0.8) translateY(-4px); }
+  to { opacity: 1; transform: scaleY(1) translateY(0); }
+}
+
+@keyframes dropdown-out {
+  from { opacity: 1; transform: scaleY(1) translateY(0); }
+  to { opacity: 0; transform: scaleY(0.8) translateY(-4px); }
 }
 
 @keyframes shimmer {

@@ -5,7 +5,6 @@ import type { Tank, BercarioLote, RecriaLote, EngordaLote, TankPhase } from '@/l
 import { PHASE_LABELS } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import PhaseBadge from './PhaseBadge';
-import PhaseEditForm from './PhaseEditForm';
 import { X, Pencil, RefreshCw, Droplets, Scale, Package, Calculator, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -13,6 +12,11 @@ import { getPhaseDotColor } from '@/lib/phase-utils';
 import { MetricCard } from './MetricCard';
 import { SectionTitle } from './SectionTitle';
 import { Skeleton } from './ui/skeleton';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover';
 
 interface TankDetailPanelProps {
   tank: Tank;
@@ -65,11 +69,11 @@ const PHASE_OPTIONS: TankPhase[] = ['bercario', 'recria', 'engorda', 'vazio'];
 
 const PHASE_FIELDS: Record<Exclude<TankPhase, 'vazio'>, FieldDef[]> = {
   bercario: [
-    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-blue-600', step: '1', integer: true, section: 'capacity' },
+    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-[#2d4518]', step: '1', integer: true, section: 'capacity' },
     { key: 'peso_total_kg', label: 'Biomassa Total', icon: Scale, unit: 'kg', highlight: true, section: 'capacity' },
     { key: 'densidade_kg_m2', label: 'Densidade alvo', icon: Droplets, unit: 'kg/m²', section: 'capacity' },
     { key: 'peso_entrada_kg', label: 'Peso Entrada (un)', icon: Scale, unit: 'g', scale: 1000, section: 'capacity' },
-    { key: 'peso_transferencia_kg', label: 'Peso Transf. (un)', icon: Scale, unit: 'g', scale: 1000, color: 'text-blue-600', section: 'capacity' },
+    { key: 'peso_transferencia_kg', label: 'Peso Transf. (un)', icon: Scale, unit: 'g', scale: 1000, color: 'text-[#2d4518]', section: 'capacity' },
     { key: 'peso_ganhar_kg', label: 'Peso a Ganhar', icon: Scale, unit: 'kg', section: 'capacity' },
     { key: 'racao_periodo_kg', label: 'Total do Período', icon: Calculator, unit: 'kg', highlight: true, color: 'text-amber-600', section: 'feeding' },
     { key: 'racao_mes_sc', label: 'Consumo Mensal', icon: Calculator, unit: 'sacos', color: 'text-amber-600', section: 'feeding' },
@@ -78,11 +82,11 @@ const PHASE_FIELDS: Record<Exclude<TankPhase, 'vazio'>, FieldDef[]> = {
   ],
   recria: [
     { key: 'periodo_meses', label: 'Período (meses)', icon: Clock, unit: 'meses', step: '1', integer: true, section: 'capacity', hidden: true },
-    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-green-600', step: '1', integer: true, section: 'capacity' },
+    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-(--phase-recria)', step: '1', integer: true, section: 'capacity' },
     { key: 'peso_total_kg', label: 'Biomassa Total', icon: Scale, unit: 'kg', highlight: true, section: 'capacity' },
     { key: 'densidade_kg_m2', label: 'Densidade alvo', icon: Droplets, unit: 'kg/m²', section: 'capacity' },
     { key: 'peso_entrada_kg', label: 'Peso Entrada (un)', icon: Scale, unit: 'kg', section: 'capacity' },
-    { key: 'peso_transferencia_kg', label: 'Peso Transf. (un)', icon: Scale, unit: 'kg', color: 'text-green-600', section: 'capacity' },
+    { key: 'peso_transferencia_kg', label: 'Peso Transf. (un)', icon: Scale, unit: 'kg', color: 'text-(--phase-recria)', section: 'capacity' },
     { key: 'peso_ganhar_kg', label: 'Peso a Ganhar', icon: Scale, unit: 'kg', section: 'capacity' },
     { key: 'racao_periodo_kg', label: 'Total do Período', icon: Calculator, unit: 'kg', highlight: true, color: 'text-amber-600', section: 'feeding' },
     { key: 'racao_mes_sc', label: 'Consumo Mensal', icon: Calculator, unit: 'sacos', color: 'text-amber-600', section: 'feeding' },
@@ -91,11 +95,11 @@ const PHASE_FIELDS: Record<Exclude<TankPhase, 'vazio'>, FieldDef[]> = {
   ],
   engorda: [
     { key: 'periodo_meses', label: 'Período (meses)', icon: Clock, unit: 'meses', step: '1', integer: true, section: 'capacity', hidden: true },
-    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-amber-600', step: '1', integer: true, section: 'capacity' },
+    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-blue-800', step: '1', integer: true, section: 'capacity' },
     { key: 'peso_total_kg', label: 'Biomassa Total', icon: Scale, unit: 'kg', highlight: true, section: 'capacity' },
     { key: 'densidade_kg_m2', label: 'Densidade final', icon: Droplets, unit: 'kg/m²', section: 'capacity' },
     { key: 'peso_entrada_kg', label: 'Peso Entrada (un)', icon: Scale, unit: 'kg', section: 'capacity' },
-    { key: 'peso_final_kg_peixe', label: 'Peso Abate (un)', icon: Scale, unit: 'kg', color: 'text-amber-600', section: 'capacity' },
+    { key: 'peso_final_kg_peixe', label: 'Peso Abate (un)', icon: Scale, unit: 'kg', color: 'text-blue-800', section: 'capacity' },
     { key: 'peso_ganhar_kg', label: 'Peso a Ganhar', icon: Scale, unit: 'kg', section: 'capacity' },
     { key: 'racao_periodo_kg', label: 'Ração Total Período', icon: Calculator, unit: 'kg', highlight: true, color: 'text-amber-600', section: 'feeding' },
     { key: 'racao_mes_sc', label: 'Consumo Mensal', icon: Calculator, unit: 'sacos', color: 'text-amber-600', section: 'feeding' },
@@ -124,12 +128,10 @@ export default function TankDetailPanel({
   engordaLote,
   onClose,
 }: TankDetailPanelProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [isPhaseTooltipOpen, setIsPhaseTooltipOpen] = useState(false);
   const [phaseSubfaseDraft, setPhaseSubfaseDraft] = useState(tank.subfase ?? '');
   const [quickEdit, setQuickEdit] = useState<QuickEditState | null>(null);
   const skipBlurCommitRef = useRef(false);
-  const phaseTooltipRef = useRef<HTMLDivElement | null>(null);
   const firstPhaseButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const updateTankPhase = useStore((s) => s.updateTankPhase);
@@ -195,8 +197,7 @@ export default function TankDetailPanel({
     step?: string;
     integer?: boolean;
     scale?: number;
-  }) => {
-    if (isEditing) return;
+    }) => {
     setQuickEdit({
       fieldKey,
       label,
@@ -302,26 +303,6 @@ export default function TankDetailPanel({
     return () => cancelAnimationFrame(id);
   }, [isPhaseTooltipOpen]);
 
-  useEffect(() => {
-    if (!isPhaseTooltipOpen) return;
-    const handleOutsideMouseDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (phaseTooltipRef.current && !phaseTooltipRef.current.contains(target)) {
-        setIsPhaseTooltipOpen(false);
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsPhaseTooltipOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideMouseDown);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideMouseDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isPhaseTooltipOpen]);
 
   const applyPhaseChange = (nextPhase: TankPhase) => {
     if (nextPhase === 'vazio' && hasLoteActive) {
@@ -405,7 +386,37 @@ export default function TankDetailPanel({
             <h2 className="text-xl font-bold text-foreground font-heading leading-none">
               Tanque {tank.id.toString().padStart(2, '0')}
             </h2>
-            <PhaseBadge phase={tank.phase} size="md" />
+            <Popover open={isPhaseTooltipOpen} onOpenChange={setIsPhaseTooltipOpen}>
+              <PopoverTrigger
+                render={
+                  <button type="button" className="inline-flex cursor-pointer" />
+                }
+              >
+                <PhaseBadge phase={tank.phase} size="md" />
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-2" side="bottom" sideOffset={6}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-2 mb-1.5">
+                  Alterar fase
+                </p>
+                <div className="space-y-0.5">
+                  {PHASE_OPTIONS.map((p) => (
+                    <button
+                      key={p}
+                      ref={p === tank.phase ? firstPhaseButtonRef : undefined}
+                      type="button"
+                      onClick={() => applyPhaseChange(p)}
+                      className={cn(
+                        'flex items-center w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-150',
+                        'hover:bg-muted/80',
+                        p === tank.phase && 'bg-muted ring-1 ring-border'
+                      )}
+                    >
+                      <PhaseBadge phase={p} size="sm" showDot />
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -428,17 +439,6 @@ export default function TankDetailPanel({
             onClick={() => {
               handleQuickEditSave();
               setIsPhaseTooltipOpen(false);
-              setIsEditing(true);
-            }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Editar projeções"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => {
-              handleQuickEditSave();
-              setIsPhaseTooltipOpen(false);
               onClose();
             }}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -451,19 +451,7 @@ export default function TankDetailPanel({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-5 py-5 custom-scrollbar relative">
-        {isEditing ? (
-          <div className="w-full h-full min-h-[400px] rounded-2xl border border-border bg-card p-6 shadow-md flex flex-col">
-            <h3 className="text-lg font-medium text-foreground mb-6">Editar Lote de {PHASE_LABELS[tank.phase]}</h3>
-            <PhaseEditForm
-              tank={tank}
-              bercarioLote={bercarioLote}
-              recriaLote={recriaLote}
-              engordaLote={engordaLote}
-              onSave={() => setIsEditing(false)}
-              onCancel={() => setIsEditing(false)}
-            />
-          </div>
-        ) : !hasLoteActive && tank.phase !== 'vazio' ? (
+        {!hasLoteActive && tank.phase !== 'vazio' ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] rounded-2xl border border-dashed border-border bg-muted/30 p-12 text-center">
             <div className="grid grid-cols-2 gap-3 w-full mb-8">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -591,22 +579,6 @@ export default function TankDetailPanel({
           </div>
         )}
       </div>
-
-      {/* Footer sticky */}
-      {!isEditing && hasLoteActive && tank.phase !== 'vazio' && (
-        <div className="sticky bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-sm px-5 py-3 z-10">
-          <Button
-            onClick={() => {
-              handleQuickEditSave();
-              setIsEditing(true);
-            }}
-            className="w-full rounded-full px-5 py-2.5 text-sm font-medium shadow-lg shadow-primary/25 transition-all hover:scale-105"
-          >
-            <Pencil className="w-4 h-4" />
-            Editar Projeções
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

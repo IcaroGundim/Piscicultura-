@@ -35,17 +35,17 @@ const METRIC_OPTIONS: { value: Metric; label: string; icon: typeof Fish; unit: s
 ];
 
 export default function FishCountChart() {
-  const tanks = useStore((s) => s.tanks);
-  const bercarioLotes = useStore((s) => s.bercarioLotes);
-  const recriaLotes = useStore((s) => s.recriaLotes);
-  const engordaLotes = useStore((s) => s.engordaLotes);
+  const tanks = useStore((s) => s.activeTanks);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
+  const phaseColors = useStore((s) => s.phaseColors);
   const [filter, setFilter] = useState<PhaseFilter>('todos');
   const [metric, setMetric] = useState<Metric>('peixes');
 
   const metricConfig = METRIC_OPTIONS.find((m) => m.value === metric)!;
 
   const chartData = useMemo(() => {
-    // Build maps for each metric per tank
     const fishMap = new Map<number, number>();
     const biomassMap = new Map<number, number>();
     const racaoMap = new Map<number, number>();
@@ -81,10 +81,10 @@ export default function FishCountChart() {
         name: `T${t.id.toString().padStart(2, '0')}`,
         valor: getMetricValue(t.id),
         phase: t.phase,
-        color: PHASE_COLORS[t.phase] ?? '#94a3b8',
+        color: (t.phase !== 'vazio' ? phaseColors[t.phase] ?? PHASE_COLORS[t.phase] : null) ?? '#94a3b8',
       }))
       .sort((a, b) => b.valor - a.valor);
-  }, [tanks, bercarioLotes, recriaLotes, engordaLotes, filter, metric]);
+  }, [tanks, bercarioLotes, recriaLotes, engordaLotes, filter, metric, phaseColors]);
 
   const total = chartData.reduce((s, d) => s + d.valor, 0);
   const activeTanks = chartData.length;
@@ -239,7 +239,7 @@ export default function FishCountChart() {
             if (phaseTotal === 0) return null;
             return (
               <div key={phase} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PHASE_COLORS[phase] }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: phaseColors[phase] ?? PHASE_COLORS[phase] }} />
                 <span className="text-xs text-slate-600 font-medium">
                   {PHASE_LABELS[phase]}: {formatValue(phaseTotal)} {metricConfig.unitShort}
                 </span>

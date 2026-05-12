@@ -81,8 +81,24 @@ export const PHASE_LABELS: Record<TankPhase, string> = {
 };
 
 export const PHASE_COLORS: Record<TankPhase, string> = {
-  bercario: '#3b82f6',
-  recria: '#22c55e',
-  engorda: '#f59e0b',
-  vazio: '#475569',
+  bercario: '#94ba65',
+  recria: '#f3fa6b',
+  engorda: '#2563eb',
+  vazio: '#52525b',
+};
+
+export type LocationKey = 'rondonia' | 'acre';
+
+export interface LocationData {
+  tanks: Tank[];
+  bercarioLotes: BercarioLote[];
+  recriaLotes: RecriaLote[];
+  engordaLotes: EngordaLote[];
+  premissas: Premissas;
+  custos: Custos;
+}
+
+export const LOCATION_LABELS: Record<LocationKey, string> = {
+  rondonia: 'Rondônia',
+  acre: 'Acre',
 };

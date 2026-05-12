@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import type { Premissas, Custos } from '@/lib/types';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { NumberField } from '@/components/forms/NumberField';
 import { Check, TrendingUp, Settings, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,10 +22,10 @@ function SectionCard({ title, icon: Icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-5 shadow-sm backdrop-blur-sm">
+    <div className="rounded-2xl border border-border/80 bg-white p-5 shadow-md">
       <div className="flex items-center gap-2.5 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
-          <Icon className="h-4 w-4 text-primary" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
+          <Icon className="h-4 w-4 text-primary-foreground" />
         </div>
         <h2 className="text-sm font-bold text-foreground">{title}</h2>
       </div>
@@ -32,12 +34,12 @@ function SectionCard({ title, icon: Icon, children }: {
   );
 }
 
-interface PremissasDialogProps {
+interface PremissasDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function PremissasDialog({ open, onOpenChange }: PremissasDialogProps) {
+export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerProps) {
   const premissas = useStore((s) => s.activePremissas);
   const custos = useStore((s) => s.activeCustos);
   const updatePremissas = useStore((s) => s.updatePremissas);
@@ -68,35 +70,29 @@ export default function PremissasDialog({ open, onOpenChange }: PremissasDialogP
     : '0';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle className="text-xl font-bold text-foreground">
-            Premissas & Configurações
-          </DialogTitle>
-          <DialogDescription>
-            Parâmetros globais de produção e financeiros
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="px-6 pb-6 space-y-4">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleSave}
-              className={cn(
-                'flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-all duration-200 min-h-[44px]',
-                saved
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
-              )}
-            >
-              <Check className="w-4 h-4" />
-              {saved ? 'Salvo!' : 'Salvar Alterações'}
-            </button>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="!w-[720px] sm:!max-w-3xl flex flex-col h-full p-0 bg-muted/40"
+      >
+        <SheetHeader className="px-5 pt-5 pb-3 shrink-0 bg-white border-b border-border/60">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-sm">
+              <Settings className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <SheetTitle className="text-lg font-bold text-foreground">
+                Premissas & Configurações
+              </SheetTitle>
+              <SheetDescription className="text-xs text-foreground/70 font-medium">
+                Parâmetros globais de produção e financeiros
+              </SheetDescription>
+            </div>
           </div>
+        </SheetHeader>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <SectionCard title="Parâmetros de Produção" icon={Settings}>
               <div className="grid grid-cols-2 gap-3">
                 <NumberField
@@ -232,7 +228,41 @@ export default function PremissasDialog({ open, onOpenChange }: PremissasDialogP
             </SectionCard>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <SheetFooter className="px-4 pb-4 pt-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleSave}
+            className={cn(
+              'flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 w-full min-h-[44px]',
+              saved
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
+            )}
+          >
+            <Check className="w-4 h-4" />
+            {saved ? 'Salvo!' : 'Salvar Alterações'}
+          </button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function PremissasDrawerTrigger({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 min-h-[40px]',
+        'bg-primary/10 text-primary border border-primary/20',
+        'hover:bg-primary/15 hover:border-primary/30 hover:shadow-sm hover:shadow-primary/10',
+        'active:scale-95'
+      )}
+    >
+      <Settings className="w-4 h-4" />
+      <span className="hidden sm:inline">Premissas & Configurações</span>
+    </button>
   );
 }

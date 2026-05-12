@@ -17,10 +17,19 @@ const phaseIcons: Record<TankPhase, typeof Fish> = {
   vazio: CircleOff,
 };
 
-export default function KanbanBoard() {
-  const tanks = useStore((s) => s.tanks);
+interface KanbanBoardProps {
+  showVazio?: boolean;
+}
+
+export default function KanbanBoard({ showVazio = false }: KanbanBoardProps) {
+  const tanks = useStore((s) => s.activeTanks);
   const [selectedTankId, setSelectedTankId] = useState<number | null>(null);
   const [mobilePhase, setMobilePhase] = useState<TankPhase>('bercario');
+
+  const visiblePhases = useMemo(
+    () => (showVazio ? phases : phases.filter((p) => p !== 'vazio')),
+    [showVazio]
+  );
 
   const tanksByPhase = useMemo(() => {
     const map: Record<TankPhase, typeof tanks> = {
@@ -30,7 +39,9 @@ export default function KanbanBoard() {
       vazio: [],
     };
     for (const tank of tanks) {
-      map[tank.phase].push(tank);
+      if (tank.phase && map[tank.phase]) {
+        map[tank.phase].push(tank);
+      }
     }
     return map;
   }, [tanks]);
@@ -40,14 +51,16 @@ export default function KanbanBoard() {
     [tanks, selectedTankId]
   );
 
+  const activeMobilePhase = !showVazio && mobilePhase === 'vazio' ? 'bercario' : mobilePhase;
+
   return (
     <div className="h-full flex flex-col">
       {/* Mobile Tabs */}
       <div className="md:hidden mb-3 shrink-0">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {phases.map((phase) => {
+          {visiblePhases.map((phase) => {
             const Icon = phaseIcons[phase];
-            const isActive = mobilePhase === phase;
+            const isActive = activeMobilePhase === phase;
             return (
               <button
                 key={phase}
@@ -82,7 +95,7 @@ export default function KanbanBoard() {
       <div className="flex-1 min-h-0">
         {/* Desktop/Tablet: all columns */}
         <div className="hidden md:grid md:grid-cols-2 lg:flex lg:flex-row h-full gap-4 overflow-x-auto pb-2">
-          {phases.map((phase) => (
+          {visiblePhases.map((phase) => (
             <div key={phase} className="h-full lg:min-w-[260px] lg:flex-1">
               <KanbanColumn
                 phase={phase}
@@ -97,8 +110,8 @@ export default function KanbanBoard() {
         {/* Mobile: single column */}
         <div className="md:hidden h-full">
           <KanbanColumn
-            phase={mobilePhase}
-            tanks={tanksByPhase[mobilePhase]}
+            phase={activeMobilePhase}
+            tanks={tanksByPhase[activeMobilePhase]}
             selectedTankId={selectedTankId}
             onSelectTank={setSelectedTankId}
           />

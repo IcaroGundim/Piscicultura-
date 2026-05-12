@@ -68,7 +68,7 @@ export function MetricCard({
           <div className={cn('flex items-center justify-center w-7 h-7 rounded-full', iconBgClass)}>
             <Icon className={cn('w-3.5 h-3.5', color)} />
           </div>
-          <span className="text-xs text-muted-foreground">{label}</span>
+          <span className="text-xs text-foreground/85">{label}</span>
         </div>
         <div>
           {isEditing ? (
@@ -118,7 +118,7 @@ export function MetricCard({
         <div className={cn('flex items-center justify-center w-9 h-9 rounded-full', iconBgClass)}>
           <Icon className={cn('w-4 h-4', color)} />
         </div>
-        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
+        <span className="text-xs text-foreground/85 font-medium uppercase tracking-wider">{label}</span>
       </div>
       <div>
         {isEditing ? (
