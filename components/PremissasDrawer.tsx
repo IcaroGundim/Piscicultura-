@@ -22,12 +22,12 @@ function SectionCard({ title, icon: Icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-white p-5 shadow-md">
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
+    <div className="rounded-xl border border-border/80 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5 sm:shadow-md">
+      <div className="flex min-w-0 items-center gap-2.5 mb-3 sm:mb-4">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
           <Icon className="h-4 w-4 text-primary-foreground" />
         </div>
-        <h2 className="text-sm font-bold text-foreground">{title}</h2>
+        <h2 className="min-w-0 text-sm font-bold leading-tight text-foreground">{title}</h2>
       </div>
       {children}
     </div>
@@ -73,15 +73,15 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="!w-[720px] sm:!max-w-3xl flex flex-col h-full p-0 bg-muted/40"
+        className="!w-[calc(100vw-1rem)] !max-w-[calc(100vw-1rem)] sm:!w-[min(720px,calc(100vw-2rem))] sm:!max-w-3xl flex flex-col h-full p-0 bg-muted/40"
       >
-        <SheetHeader className="px-5 pt-5 pb-3 shrink-0 bg-white border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-sm">
-              <Settings className="h-5 w-5 text-primary-foreground" />
+        <SheetHeader className="px-4 pt-5 pb-3 shrink-0 bg-white border-b border-border/60 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3 pr-8">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary shadow-sm sm:h-10 sm:w-10">
+              <Settings className="h-4 w-4 text-primary-foreground sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <SheetTitle className="text-lg font-bold text-foreground">
+            <div className="min-w-0">
+              <SheetTitle className="text-base font-bold leading-tight text-foreground sm:text-lg">
                 Premissas & Configurações
               </SheetTitle>
               <SheetDescription className="text-xs text-foreground/70 font-medium">
@@ -91,10 +91,10 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 sm:px-4 sm:py-2 sm:space-y-4">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
             <SectionCard title="Parâmetros de Produção" icon={Settings}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <NumberField
                   label="Produção Anual" unit="kg"
                   value={localPremissas.producao_anual}
@@ -132,7 +132,7 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
             </SectionCard>
 
             <SectionCard title="Pesos de Transferência" icon={Settings}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <NumberField
                   label="Peso Final Engorda" unit="kg"
                   value={localPremissas.peso_final_engorda}
@@ -184,30 +184,30 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
 
             <SectionCard title="Resultado Estimado" icon={DollarSign}>
               <div className="space-y-3">
-                <div className="flex items-center justify-between py-2 border-b border-border">
+                <div className="flex min-w-0 items-start justify-between gap-3 py-2 border-b border-border">
                   <span className="text-sm text-muted-foreground">Receita Total</span>
-                  <span className="text-sm font-semibold text-emerald-600">
+                  <span className="min-w-0 text-right text-sm font-semibold text-emerald-600 break-words">
                     R$ {localCustos.receita_venda.toLocaleString('pt-BR')}
                   </span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-border">
+                <div className="flex min-w-0 items-start justify-between gap-3 py-2 border-b border-border">
                   <span className="text-sm text-muted-foreground">Custo Ração</span>
-                  <span className="text-sm font-semibold text-red-600">
+                  <span className="min-w-0 text-right text-sm font-semibold text-red-600 break-words">
                     − R$ {localCustos.custo_racao.toLocaleString('pt-BR')}
                   </span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-border">
+                <div className="flex min-w-0 items-start justify-between gap-3 py-2 border-b border-border">
                   <span className="text-sm text-muted-foreground">Outras Despesas</span>
-                  <span className="text-sm font-semibold text-red-600">
+                  <span className="min-w-0 text-right text-sm font-semibold text-red-600 break-words">
                     − R$ {localCustos.outras_despesas.toLocaleString('pt-BR')}
                   </span>
                 </div>
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex min-w-0 items-start justify-between gap-3 pt-2">
                   <span className="text-sm font-bold text-foreground font-heading">
                     Lucro Estimado/Ano
                   </span>
-                  <div className="text-right">
-                    <p className={cn('text-lg font-bold font-heading', lucro >= 0 ? 'text-emerald-600' : 'text-red-600')}>
+                  <div className="min-w-0 text-right">
+                    <p className={cn('text-base font-bold font-heading break-words sm:text-lg', lucro >= 0 ? 'text-emerald-600' : 'text-red-600')}>
                       R$ {lucro.toLocaleString('pt-BR')}
                     </p>
                     <p className={cn('text-xs', lucro >= 0 ? 'text-emerald-600' : 'text-red-500')}>
@@ -229,7 +229,7 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
           </div>
         </div>
 
-        <SheetFooter className="px-4 pb-4 pt-2 shrink-0">
+        <SheetFooter className="px-3 pb-3 pt-2 shrink-0 sm:px-4 sm:pb-4">
           <button
             type="button"
             onClick={handleSave}

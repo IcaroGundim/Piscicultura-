@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Waves, Database, FileText, FileSpreadsheet, Loader2, ChevronDown, MapPin, Settings } from 'lucide-react';
+import { Waves, Database, FileText, FileSpreadsheet, Loader2, ChevronDown, MapPin, Settings, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { LOCATION_LABELS } from '@/lib/types';
@@ -27,6 +27,10 @@ export default function TopNav() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [actionMenuVisible, setActionMenuVisible] = useState(false);
+  const [actionMenuAnimating, setActionMenuAnimating] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
 
   const openDropdown = useCallback(() => {
     setDropdownVisible(true);
@@ -46,6 +50,24 @@ export default function TopNav() {
     }
   }, [locationOpen]);
 
+  const openActionMenu = useCallback(() => {
+    setActionMenuVisible(true);
+    setActionMenuAnimating(true);
+    setActionMenuOpen(true);
+  }, []);
+
+  const closeActionMenu = useCallback(() => {
+    setActionMenuAnimating(true);
+    setActionMenuOpen(false);
+  }, []);
+
+  const handleActionMenuAnimationEnd = useCallback(() => {
+    setActionMenuAnimating(false);
+    if (!actionMenuOpen) {
+      setActionMenuVisible(false);
+    }
+  }, [actionMenuOpen]);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -57,6 +79,18 @@ export default function TopNav() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [locationOpen, closeDropdown]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        closeActionMenu();
+      }
+    }
+    if (actionMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [actionMenuOpen, closeActionMenu]);
 
   const handleGenerateReport = async () => {
     setGenerating(true);
@@ -103,11 +137,11 @@ export default function TopNav() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-[#165a64]/30 bg-[#1d5e69] backdrop-blur-md">
-        <div className="flex h-16 items-center px-6 bg-[#1d5e69] text-white">
+        <div className="flex h-14 items-center gap-1.5 px-3 bg-[#1d5e69] text-white md:h-16 md:gap-0 md:px-6">
           {/* Logo area */}
-          <div className="flex items-center mr-8 pr-6 border-r border-white/20">
+          <div className="flex items-center pr-2 border-r border-white/20 md:mr-8 md:pr-6">
             <div className="flex flex-col">
-              <h1 className="hidden text-base lg:text-lg font-bold tracking-tight text-white sm:block">
+              <h1 className="text-sm font-bold tracking-tight text-white sm:text-base lg:text-lg">
                 Manati
               </h1>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -119,7 +153,7 @@ export default function TopNav() {
           </div>
 
           {/* Navigation items */}
-          <nav role="navigation" className="flex items-center space-x-1 lg:space-x-2">
+          <nav role="navigation" className="flex items-center gap-1 md:space-x-1 lg:space-x-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -129,8 +163,9 @@ export default function TopNav() {
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? 'page' : undefined}
+                  aria-label={item.label}
                   className={cn(
-                    'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 min-h-[44px]',
+                    'flex items-center justify-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition-all duration-200 min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0 md:px-3',
                     isActive
                       ? 'bg-white/20 text-white border border-white/30'
                       : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
@@ -149,12 +184,15 @@ export default function TopNav() {
               <button
                 onClick={() => (locationOpen ? closeDropdown() : openDropdown())}
                 className={cn(
-                  'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 cursor-pointer min-h-[44px]',
+                  'flex items-center gap-1.5 rounded-xl px-2 py-2 text-sm font-medium transition-all duration-200 cursor-pointer min-h-[40px] md:min-h-[44px] md:gap-2 md:px-3',
                   'bg-white/15 text-white border border-white/25 hover:bg-white/25'
                 )}
+                aria-label={`Selecionar local: ${LOCATION_LABELS[activeLocation as LocationKey]}`}
               >
                 <MapPin className="h-4 w-4" />
-                <span className="hidden md:block">{LOCATION_LABELS[activeLocation as LocationKey]}</span>
+                <span className="max-w-[3.75rem] truncate text-xs sm:max-w-[4.5rem] sm:text-sm md:max-w-none md:text-sm">
+                  {LOCATION_LABELS[activeLocation as LocationKey]}
+                </span>
                 <ChevronDown
                   className={cn('h-3.5 w-3.5 transition-transform duration-200', locationOpen && 'rotate-180')}
                 />
@@ -163,8 +201,8 @@ export default function TopNav() {
                 <div
                   onAnimationEnd={handleAnimationEnd}
                   className={cn(
-                    'absolute top-full left-0 mt-1 w-40 rounded-lg border border-white/20 bg-[#1a4f58] shadow-lg shadow-black/20 overflow-hidden z-50',
-                    'origin-top-left',
+                    'absolute top-full right-0 mt-1 w-40 rounded-lg border border-white/20 bg-[#1a4f58] shadow-lg shadow-black/20 overflow-hidden z-50 md:left-0 md:right-auto',
+                    'origin-top-right md:origin-top-left',
                     locationOpen
                       ? 'animate-[dropdown-in_200ms_ease-out_forwards]'
                       : 'animate-[dropdown-out_150ms_ease-in_forwards]'
@@ -197,7 +235,7 @@ export default function TopNav() {
               type="button"
               onClick={() => setConfigOpen(true)}
               className={cn(
-                'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 cursor-pointer min-h-[44px]',
+                'hidden items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 cursor-pointer min-h-[44px] md:flex',
                 'bg-white/15 text-white border border-white/25 hover:bg-white/25'
               )}
             >
@@ -209,7 +247,7 @@ export default function TopNav() {
           {/* Spacer  */}
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden items-center gap-2 shrink-0 md:flex">
             <button
               id="btn-export-spreadsheet"
               onClick={handleExportSpreadsheet}
@@ -257,6 +295,90 @@ export default function TopNav() {
               )}
               <span className="hidden sm:block">{generating ? 'Gerando...' : 'Gerar Relatório'}</span>
             </button>
+          </div>
+
+          <div className="relative shrink-0 md:hidden" ref={actionMenuRef}>
+            <button
+              type="button"
+              onClick={() => (actionMenuOpen ? closeActionMenu() : openActionMenu())}
+              className={cn(
+                'flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border px-2.5 py-2 text-sm font-medium transition-all duration-200 cursor-pointer',
+                'bg-white text-[#1d5e69] border-white/80 shadow-sm shadow-black/10 ring-1 ring-inset ring-black/5',
+                'hover:bg-white/90 active:bg-white'
+              )}
+              aria-label="Abrir menu de ações"
+              aria-expanded={actionMenuOpen}
+              aria-haspopup="menu"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+
+            {(actionMenuVisible || actionMenuAnimating) && (
+              <div
+                role="menu"
+                onAnimationEnd={handleActionMenuAnimationEnd}
+                className={cn(
+                  'absolute top-full right-0 mt-1 w-56 rounded-lg border border-white/20 bg-[#1a4f58] shadow-lg shadow-black/20 overflow-hidden z-50',
+                  'origin-top-right',
+                  actionMenuOpen
+                    ? 'animate-[dropdown-in_200ms_ease-out_forwards]'
+                    : 'animate-[dropdown-out_150ms_ease-in_forwards]'
+                )}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeActionMenu();
+                    setConfigOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium text-white/80 transition-colors cursor-pointer hover:bg-white/10 hover:text-white"
+                >
+                  <Settings className="h-4 w-4 text-white/60" />
+                  Configuração
+                </button>
+                <button
+                  id="btn-export-spreadsheet-mobile"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeActionMenu();
+                    void handleExportSpreadsheet();
+                  }}
+                  disabled={exporting}
+                  aria-busy={exporting}
+                  aria-live="polite"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium text-white/80 transition-colors cursor-pointer hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {exporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-white/60" />
+                  ) : (
+                    <FileSpreadsheet className="h-4 w-4 text-white/60" />
+                  )}
+                  {exporting ? 'Exportando...' : 'Exportar Planilha'}
+                </button>
+                <button
+                  id="btn-generate-report-mobile"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeActionMenu();
+                    void handleGenerateReport();
+                  }}
+                  disabled={generating}
+                  aria-busy={generating}
+                  aria-live="polite"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium text-white/80 transition-colors cursor-pointer hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {generating ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-white/60" />
+                  ) : (
+                    <FileText className="h-4 w-4 text-white/60" />
+                  )}
+                  {generating ? 'Gerando...' : 'Gerar Relatório'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
