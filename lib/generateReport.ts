@@ -564,7 +564,7 @@ export function generateReport(data: ReportData) {
     autoTable(doc, {
       startY: y,
       margin: { left: marginLeft, right: marginRight },
-      head: [['Tanque', 'Nome', 'Peixes', 'Peso Entrada (kg)', 'Peso Total (kg)', 'Dens. (kg/m2)', 'Racao/Mes (sc)', 'Racao Total (sc)']],
+      head: [['Tanque', 'Nome', 'Peixes', 'Peso Entrada (kg)', 'Peso Total (kg)', 'Dens. (kg/m3)', 'Racao/Mes (sc)', 'Racao Total (sc)']],
       body: bercarioLotes.map((l) => [
         `T${l.tankId}`,
         s(l.nome),
@@ -600,7 +600,7 @@ export function generateReport(data: ReportData) {
     autoTable(doc, {
       startY: y,
       margin: { left: marginLeft, right: marginRight },
-      head: [['Tanque', 'Peixes', 'Peso Ent. (kg)', 'Peso Total (kg)', 'Dens. (kg/m2)', 'Racao/Mes (sc)', 'Racao Total (sc)', 'Periodo (m)']],
+      head: [['Tanque', 'Peixes', 'Peso Ent. (kg)', 'Peso Total (kg)', 'Dens. (kg/m3)', 'Racao/Mes (sc)', 'Racao Total (sc)', 'Periodo (m)']],
       body: recriaLotes.map((l) => [
         `T${l.tankId}`,
         fmt(l.qtd_peixes),
@@ -636,7 +636,7 @@ export function generateReport(data: ReportData) {
     autoTable(doc, {
       startY: y,
       margin: { left: marginLeft, right: marginRight },
-      head: [['Tanque', 'Modulo', 'Peixes', 'Peso Ent. (kg)', 'Peso Total (kg)', 'Conv. Alim.', 'Dens. (kg/m2)', 'Racao/Mes (sc)', 'Racao Total (sc)', 'Per. (m)']],
+      head: [['Tanque', 'Modulo', 'Peixes', 'Peso Ent. (kg)', 'Peso Total (kg)', 'Conv. Alim.', 'Dens. (kg/m3)', 'Racao/Mes (sc)', 'Racao Total (sc)', 'Per. (m)']],
       body: engordaLotes.map((l) => [
         `T${l.tankId}`,
         s(l.modulo),

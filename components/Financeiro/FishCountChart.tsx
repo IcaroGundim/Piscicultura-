@@ -101,15 +101,15 @@ export default function FishCountChart() {
   })();
 
   return (
-    <div className="rounded-2xl border border-border bg-card/90 p-5 shadow-sm shadow-blue-950/5 backdrop-blur-sm">
+    <div className="rounded-2xl border border-border bg-card/90 p-4 shadow-sm shadow-blue-950/5 backdrop-blur-sm sm:p-5">
       {/* Header */}
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 border border-blue-100">
               <metricConfig.icon className="h-4 w-4 text-blue-600" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-sm font-bold text-slate-800">
                 Dados por Tanque
               </h3>
@@ -120,13 +120,13 @@ export default function FishCountChart() {
           </div>
 
           {/* Phase Selector */}
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/80 p-0.5">
+          <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50/80 p-0.5 sm:w-auto sm:grid-cols-4">
             {FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilter(opt.value)}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 min-h-[36px]',
+                  'min-h-[36px] min-w-0 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-200 sm:px-3',
                   filter === opt.value
                     ? 'bg-white text-slate-800 shadow-sm border border-slate-200/70'
                     : 'text-slate-500 hover:text-slate-700 border border-transparent'
@@ -139,7 +139,7 @@ export default function FishCountChart() {
         </div>
 
         {/* Metric Selector */}
-        <div className="flex items-center gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center">
           {METRIC_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isActive = metric === opt.value;
@@ -148,14 +148,14 @@ export default function FishCountChart() {
                 key={opt.value}
                 onClick={() => setMetric(opt.value)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 border min-h-[36px]',
+                  'flex min-h-[36px] min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-all duration-200 sm:px-3',
                   isActive
                     ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700'
                 )}
               >
                 <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-blue-600' : 'text-slate-400')} />
-                {opt.label}
+                <span className="min-w-0 truncate">{opt.label}</span>
               </button>
             );
           })}
@@ -164,12 +164,12 @@ export default function FishCountChart() {
 
       {/* Chart */}
       {chartData.length > 0 ? (
-        <div className="w-full" style={{ height: Math.max(280, chartData.length * 38 + 40) }}>
+        <div className="w-full overflow-hidden" style={{ height: Math.max(280, chartData.length * 38 + 40) }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
               layout="vertical"
-              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+              margin={{ top: 5, right: 18, left: 0, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
               <XAxis

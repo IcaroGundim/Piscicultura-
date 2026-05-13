@@ -127,7 +127,7 @@ export async function generateSpreadsheet(data: SpreadsheetData) {
     { header: 'Peso Entrada (kg)', key: 'peso_ent', width: 18, numFmt: FMT_DEC2 },
     { header: 'Peso Ganhar (kg)', key: 'peso_ganhar', width: 18, numFmt: FMT_DEC2 },
     { header: 'Peso Total (kg)', key: 'peso_total', width: 16, numFmt: FMT_DEC2 },
-    { header: 'Densidade (kg/m²)', key: 'densidade', width: 18, numFmt: FMT_DEC3 },
+    { header: 'Densidade (kg/m³)', key: 'densidade', width: 18, numFmt: FMT_DEC3 },
     { header: 'Peso Transf. (kg)', key: 'peso_transf', width: 18, numFmt: FMT_DEC2 },
     { header: 'Conv. Alimentar', key: 'conv', width: 16, numFmt: FMT_DEC2 },
     { header: 'Peso Final/Peixe (kg)', key: 'peso_final', width: 20, numFmt: FMT_DEC2 },

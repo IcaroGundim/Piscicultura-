@@ -22,6 +22,11 @@ import type {
   TankPhase,
 } from './types';
 import {
+  calculateBercarioLote,
+  calculateEngordaLote,
+  calculateRecriaLote,
+} from './feedingCalculations';
+import {
   buildDerivedState,
   createDefaultProjectState,
   normalizeProjectState,
@@ -42,6 +47,7 @@ interface AppState {
 
   setLocation: (key: LocationKey) => void;
   updateTankPhase: (tankId: number, newPhase: TankPhase, subfase?: string) => void;
+  updateTankArea: (tankId: number, areaM2: number) => void;
   updateBercarioLote: (tankId: number, data: Partial<BercarioLote>) => void;
   updateRecriaLote: (tankId: number, data: Partial<RecriaLote>) => void;
   updateEngordaLote: (tankId: number, data: Partial<EngordaLote>) => void;
@@ -141,36 +147,38 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
             bercarioLotes = [
               ...bercarioLotes,
               {
-                ...common,
-                nome: oldBercario?.nome ?? '',
-                peso_transferencia_kg:
-                  oldBercario?.peso_transferencia_kg ??
-                  oldRecria?.peso_transferencia_kg ??
-                  0.1,
+                ...calculateBercarioLote({
+                  ...common,
+                  nome: oldBercario?.nome ?? '',
+                  peso_transferencia_kg:
+                    oldBercario?.peso_transferencia_kg ??
+                    oldRecria?.peso_transferencia_kg ??
+                    0.1,
+                }, tank),
               },
             ];
           } else if (newPhase === 'recria') {
             recriaLotes = [
               ...recriaLotes,
-              {
-                ...common,
+              calculateRecriaLote({
+                  ...common,
                 peso_transferencia_kg:
                   oldRecria?.peso_transferencia_kg ??
                   oldBercario?.peso_transferencia_kg ??
                   0.7,
                 periodo_meses: oldRecria?.periodo_meses ?? oldEngorda?.periodo_meses ?? 5,
-              },
+              }, tank, location.premissas),
             ];
           } else if (newPhase === 'engorda') {
             engordaLotes = [
               ...engordaLotes,
-              {
+              calculateEngordaLote({
                 ...common,
                 modulo: oldEngorda?.modulo ?? subfase ?? '',
                 conversao_alimentar: oldEngorda?.conversao_alimentar ?? 2,
                 peso_final_kg_peixe: oldEngorda?.peso_final_kg_peixe ?? 2.5,
                 periodo_meses: oldEngorda?.periodo_meses ?? oldRecria?.periodo_meses ?? 5,
-              },
+              }, tank, location.premissas),
             ];
           }
         }
@@ -183,11 +191,49 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
         }));
       }),
 
+    updateTankArea: (tankId, areaM2) =>
+      set((state) =>
+        updateLocationInState(state, (location) => {
+          const normalizedAreaM2 = Math.max(0, Math.round(areaM2));
+          const updatedTank = location.tanks.find((entry) => entry.id === tankId);
+
+          if (!updatedTank || normalizedAreaM2 <= 0) {
+            return {};
+          }
+
+          const tankWithArea = {
+            ...updatedTank,
+            area_m2: normalizedAreaM2,
+            area_ha: Math.round((normalizedAreaM2 / 10000) * 10000) / 10000,
+          };
+
+          return {
+            tanks: location.tanks.map((entry) =>
+              entry.id === tankId ? tankWithArea : entry
+            ),
+            bercarioLotes: location.bercarioLotes.map((entry) =>
+              entry.tankId === tankId ? calculateBercarioLote(entry, tankWithArea) : entry
+            ),
+            recriaLotes: location.recriaLotes.map((entry) =>
+              entry.tankId === tankId ? calculateRecriaLote(entry, tankWithArea, location.premissas) : entry
+            ),
+            engordaLotes: location.engordaLotes.map((entry) =>
+              entry.tankId === tankId ? calculateEngordaLote(entry, tankWithArea, location.premissas) : entry
+            ),
+          };
+        })
+      ),
+
     updateBercarioLote: (tankId, data) =>
       set((state) =>
         updateLocationInState(state, (location) => ({
           bercarioLotes: location.bercarioLotes.map((entry) =>
-            entry.tankId === tankId ? { ...entry, ...data } : entry
+            entry.tankId === tankId
+              ? calculateBercarioLote(
+                  { ...entry, ...data },
+                  location.tanks.find((tank) => tank.id === tankId)
+                )
+              : entry
           ),
         }))
       ),
@@ -196,7 +242,13 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
       set((state) =>
         updateLocationInState(state, (location) => ({
           recriaLotes: location.recriaLotes.map((entry) =>
-            entry.tankId === tankId ? { ...entry, ...data } : entry
+            entry.tankId === tankId
+              ? calculateRecriaLote(
+                  { ...entry, ...data },
+                  location.tanks.find((tank) => tank.id === tankId),
+                  location.premissas
+                )
+              : entry
           ),
         }))
       ),
@@ -205,7 +257,13 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
       set((state) =>
         updateLocationInState(state, (location) => ({
           engordaLotes: location.engordaLotes.map((entry) =>
-            entry.tankId === tankId ? { ...entry, ...data } : entry
+            entry.tankId === tankId
+              ? calculateEngordaLote(
+                  { ...entry, ...data },
+                  location.tanks.find((tank) => tank.id === tankId),
+                  location.premissas
+                )
+              : entry
           ),
         }))
       ),
@@ -227,21 +285,38 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
     addBercarioLote: (lote) =>
       set((state) =>
         updateLocationInState(state, (location) => ({
-          bercarioLotes: [...location.bercarioLotes, lote],
+          bercarioLotes: [
+            ...location.bercarioLotes,
+            calculateBercarioLote(lote, location.tanks.find((tank) => tank.id === lote.tankId)),
+          ],
         }))
       ),
 
     addRecriaLote: (lote) =>
       set((state) =>
         updateLocationInState(state, (location) => ({
-          recriaLotes: [...location.recriaLotes, lote],
+          recriaLotes: [
+            ...location.recriaLotes,
+            calculateRecriaLote(
+              lote,
+              location.tanks.find((tank) => tank.id === lote.tankId),
+              location.premissas
+            ),
+          ],
         }))
       ),
 
     addEngordaLote: (lote) =>
       set((state) =>
         updateLocationInState(state, (location) => ({
-          engordaLotes: [...location.engordaLotes, lote],
+          engordaLotes: [
+            ...location.engordaLotes,
+            calculateEngordaLote(
+              lote,
+              location.tanks.find((tank) => tank.id === lote.tankId),
+              location.premissas
+            ),
+          ],
         }))
       ),
 

@@ -84,7 +84,7 @@ export default function FeedCostChart() {
   }
 
   return (
-    <div className="h-full flex flex-col rounded-2xl border border-border bg-card/90 p-5 shadow-sm">
+    <div className="h-full flex flex-col rounded-2xl border border-border bg-card/90 p-4 shadow-sm sm:p-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-bold text-foreground">
@@ -96,7 +96,7 @@ export default function FeedCostChart() {
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[240px]">
+      <div className="flex-1 w-full min-h-[220px] sm:min-h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={feedByPhase} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -123,14 +123,14 @@ export default function FeedCostChart() {
       </div>
 
       {/* Summary footer */}
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
         {feedByPhase.map((phase) => {
           const color = colorFor(phase.phase as TankPhase);
           const share = totalRacaoMes > 0 ? (phase.racao_mes / totalRacaoMes) * 100 : 0;
           return (
             <div
               key={phase.phase}
-              className="group relative overflow-hidden rounded-xl border p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+              className="group relative overflow-hidden rounded-xl border p-3 pl-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:pl-3"
               style={{
                 background: `linear-gradient(135deg, ${color}1A 0%, ${color}08 100%)`,
                 borderColor: `${color}33`,
@@ -147,8 +147,8 @@ export default function FeedCostChart() {
                 style={{ backgroundColor: color }}
               />
 
-              <div className="relative flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="relative flex min-w-0 items-center justify-between gap-2">
+                <span className="min-w-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {phase.label}
                 </span>
                 <span
@@ -159,16 +159,16 @@ export default function FeedCostChart() {
                 </span>
               </div>
 
-              <div className="relative mt-2 flex items-baseline gap-1">
-                <span className="text-lg font-bold tabular-nums text-foreground leading-none">
-                  {phase.racao_mes.toFixed(1)}
+              <div className="relative mt-2 flex min-w-0 items-baseline gap-1">
+                <span className="text-xl font-bold tabular-nums text-foreground leading-none sm:text-lg">
+                  {phase.racao_mes.toFixed(2)}
                 </span>
                 <span className="text-[10px] font-medium text-muted-foreground">sc/mês</span>
               </div>
 
-              <div className="relative mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+              <div className="relative mt-1.5 flex min-w-0 items-center justify-between gap-2 text-[10px] text-muted-foreground">
                 <span>{phase.qtd_lotes} lote{phase.qtd_lotes === 1 ? '' : 's'}</span>
-                <span className="tabular-nums">{phase.racao_total.toFixed(0)} sc total</span>
+                <span className="tabular-nums whitespace-nowrap">{phase.racao_total.toFixed(0)} sc total</span>
               </div>
             </div>
           );

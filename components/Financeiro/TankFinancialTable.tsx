@@ -129,7 +129,7 @@ export default function TankFinancialTable() {
                       {biomass > 0 ? `${biomass.toLocaleString('pt-BR')} kg` : '—'}
                     </td>
                     <td role="cell" className="px-4 py-3 text-right font-mono text-sm text-foreground tabular-nums whitespace-nowrap">
-                      {density > 0 ? `${density.toFixed(2)} kg/m²` : '—'}
+                      {density > 0 ? `${density.toFixed(2)} kg/m³` : '—'}
                     </td>
                     <td role="cell" className="px-4 py-3 text-right font-mono text-sm text-amber-700 tabular-nums whitespace-nowrap">
                       {feedMonthly > 0 ? `${feedMonthly.toFixed(1)} sc` : '—'}

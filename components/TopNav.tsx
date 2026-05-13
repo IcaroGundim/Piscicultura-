@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Waves, Database, FileText, FileSpreadsheet, Loader2, ChevronDown, MapPin, Settings, MoreVertical } from 'lucide-react';
@@ -8,7 +9,10 @@ import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { LOCATION_LABELS } from '@/lib/types';
 import type { LocationKey } from '@/lib/types';
-import PhaseColorConfig from './PhaseColorConfig';
+
+const PhaseColorConfig = dynamic(() => import('./PhaseColorConfig'), {
+  ssr: false,
+});
 
 const navItems = [
   { href: '/', label: 'Tanques', icon: Waves },
