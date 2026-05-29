@@ -1,19 +1,13 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import KanbanBoard from '@/components/KanbanBoard';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TankPopover from '@/components/TankPopover';
-import { Eye, EyeOff, Settings } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PremissasDrawer = dynamic(() => import('@/components/PremissasDrawer'), {
-  ssr: false,
-});
-
 export default function Dashboard() {
-  const [premissasDrawerOpen, setPremissasDrawerOpen] = useState(false);
   const [showVazio, setShowVazio] = useState(false);
 
   return (
@@ -30,19 +24,6 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-1.5">
           <TankPopover />
-          <button
-            type="button"
-            onClick={() => setPremissasDrawerOpen(true)}
-            className={cn(
-              'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 min-h-[40px]',
-              'bg-primary/10 text-primary border border-primary/20',
-              'hover:bg-primary/15 hover:border-primary/30 hover:shadow-sm hover:shadow-primary/10',
-              'active:scale-95'
-            )}
-          >
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Premissas & Configurações</span>
-          </button>
           <button
             type="button"
             onClick={() => setShowVazio((v) => !v)}
@@ -67,12 +48,6 @@ export default function Dashboard() {
           <KanbanBoard showVazio={showVazio} />
         </div>
       </ErrorBoundary>
-
-      {/* Premissas Drawer */}
-      <PremissasDrawer
-        open={premissasDrawerOpen}
-        onOpenChange={setPremissasDrawerOpen}
-      />
     </div>
   );
 }

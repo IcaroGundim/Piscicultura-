@@ -92,7 +92,6 @@ function normalizeCustos(custos: Partial<Custos> | undefined, fallback: Custos):
     ? (rawLancamentos.map(normalizeLancamento).filter(Boolean) as Lancamento[])
     : [...fallback.lancamentos];
   return {
-    receita_venda: custos?.receita_venda ?? fallback.receita_venda,
     lancamentos,
   };
 }

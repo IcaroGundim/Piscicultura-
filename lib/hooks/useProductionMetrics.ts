@@ -4,6 +4,7 @@ import {
   custoMaoObraAnual,
   custoRacaoAnual,
   outrasDespesasAnuais,
+  receitaTotalAnual,
 } from '@/lib/lancamentos';
 
 const KG_PER_SAC = 25;
@@ -37,7 +38,7 @@ export function useProductionMetrics() {
 
     const activeTanks = countByPhase('bercario') + countByPhase('recria') + countByPhase('engorda');
 
-    const receita = custos.receita_venda;
+    const receita = receitaTotalAnual(custos.lancamentos);
     const custoRacao = custoRacaoAnual(custos.lancamentos);
     const custoMaoObra = custoMaoObraAnual(custos.lancamentos);
     const outrasDespesas = outrasDespesasAnuais(custos.lancamentos);

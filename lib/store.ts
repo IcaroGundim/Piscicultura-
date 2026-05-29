@@ -54,7 +54,6 @@ interface AppState {
   updateRecriaLote: (tankId: number, data: Partial<RecriaLote>) => void;
   updateEngordaLote: (tankId: number, data: Partial<EngordaLote>) => void;
   updatePremissas: (data: Partial<Premissas>) => void;
-  setReceitaVenda: (valor: number) => void;
   addLancamento: (input: Omit<Lancamento, 'id'>) => void;
   updateLancamento: (id: string, patch: Partial<Omit<Lancamento, 'id'>>) => void;
   removeLancamento: (id: string) => void;
@@ -294,13 +293,6 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
       set((state) =>
         updateLocationInState(state, (location) => ({
           premissas: { ...location.premissas, ...data },
-        }))
-      ),
-
-    setReceitaVenda: (valor) =>
-      set((state) =>
-        updateLocationInState(state, (location) => ({
-          custos: { ...location.custos, receita_venda: valor },
         }))
       ),
 

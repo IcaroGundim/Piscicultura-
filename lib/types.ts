@@ -96,7 +96,6 @@ export interface Lancamento {
 }
 
 export interface Custos {
-  receita_venda: number;
   lancamentos: Lancamento[];
 }
 

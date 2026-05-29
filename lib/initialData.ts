@@ -85,7 +85,6 @@ const initialPremissasRondonia: Premissas = {
 };
 
 const initialCustosRondonia = {
-  receita_venda: 1440000,
   lancamentos: [],
 };
 
@@ -164,7 +163,6 @@ const initialPremissasAcre: Premissas = {
 };
 
 const initialCustosAcre = {
-  receita_venda: 380000,
   lancamentos: [],
 };
 
