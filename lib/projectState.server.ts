@@ -8,6 +8,8 @@ import {
 const STATE_ID = 'primary';
 type SqlClient = any;
 
+export type ProjectStateResponse = ProjectStateSnapshot & { updatedAt: string | null };
+
 let schemaReady: Promise<void> | null = null;
 
 function getSqlClient() {
@@ -35,15 +37,25 @@ async function ensureSchema(sql: SqlClient) {
   await schemaReady;
 }
 
-export async function getProjectState(): Promise<ProjectStateSnapshot> {
+function toIso(updatedAt: unknown): string | null {
+  if (!updatedAt) return null;
+  if (updatedAt instanceof Date) return updatedAt.toISOString();
+  if (typeof updatedAt === 'string') {
+    const d = new Date(updatedAt);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  return null;
+}
+
+export async function getProjectState(): Promise<ProjectStateResponse> {
   const sql = getSqlClient();
   if (!sql) {
-    return createDefaultProjectState();
+    return { ...createDefaultProjectState(), updatedAt: null };
   }
 
   await ensureSchema(sql);
   const rows = await sql`
-    SELECT state
+    SELECT state, updated_at
     FROM project_state
     WHERE id = ${STATE_ID}
     LIMIT 1
@@ -51,36 +63,41 @@ export async function getProjectState(): Promise<ProjectStateSnapshot> {
 
   if (rows.length === 0) {
     const defaultState = createDefaultProjectState();
-    await sql`
+    const inserted = await sql`
       INSERT INTO project_state (id, state)
       VALUES (${STATE_ID}, ${JSON.stringify(defaultState)}::jsonb)
       ON CONFLICT (id) DO NOTHING
+      RETURNING updated_at
     `;
-    return defaultState;
+    return { ...defaultState, updatedAt: toIso(inserted[0]?.updated_at) };
   }
 
-  return normalizeProjectState(rows[0]?.state as Partial<ProjectStateSnapshot> | null);
+  return {
+    ...normalizeProjectState(rows[0]?.state as Partial<ProjectStateSnapshot> | null),
+    updatedAt: toIso(rows[0]?.updated_at),
+  };
 }
 
 export async function saveProjectState(
   snapshot: ProjectStateSnapshot
-): Promise<ProjectStateSnapshot> {
+): Promise<ProjectStateResponse> {
   const sql = getSqlClient();
   const normalized = normalizeProjectState(snapshot);
 
   if (!sql) {
-    return normalized;
+    return { ...normalized, updatedAt: new Date().toISOString() };
   }
 
   await ensureSchema(sql);
-  await sql`
+  const rows = await sql`
     INSERT INTO project_state (id, state, updated_at)
     VALUES (${STATE_ID}, ${JSON.stringify(normalized)}::jsonb, now())
     ON CONFLICT (id)
     DO UPDATE SET
       state = EXCLUDED.state,
       updated_at = now()
+    RETURNING updated_at
   `;
 
-  return normalized;
+  return { ...normalized, updatedAt: toIso(rows[0]?.updated_at) };
 }

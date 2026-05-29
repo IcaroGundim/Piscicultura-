@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tooling artifacts
+/.kilo
+/.swarm
+/SWARM_PLAN.json
+/SWARM_PLAN.md

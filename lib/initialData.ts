@@ -86,8 +86,7 @@ const initialPremissasRondonia: Premissas = {
 
 const initialCustosRondonia = {
   receita_venda: 1440000,
-  custo_racao: 800000,
-  outras_despesas: 200000,
+  lancamentos: [],
 };
 
 // Acre — dados próprios, distintos de Rondônia
@@ -166,8 +165,7 @@ const initialPremissasAcre: Premissas = {
 
 const initialCustosAcre = {
   receita_venda: 380000,
-  custo_racao: 160000,
-  outras_despesas: 38000,
+  lancamentos: [],
 };
 
 export const initialLocations: Record<string, LocationData> = {

@@ -1,11 +1,10 @@
 'use client';
 
 import { useRef, useLayoutEffect } from 'react';
-import gsap from 'gsap';
 import type { Tank, TankPhase } from '@/lib/types';
 import { PHASE_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import TankCard from './TankCard';
+import TankDetailPopover from './TankDetailPopover';
 import { Inbox } from 'lucide-react';
 
 interface KanbanColumnProps {
@@ -48,18 +47,19 @@ export default function KanbanColumn({
   const prevTanksRef = useRef<string>('');
 
   useLayoutEffect(() => {
+    let cancelled = false;
     const tankIds = tanks.map((t) => t.id).join(',');
     const prevTankIds = prevTanksRef.current.split(',').filter(Boolean);
     const currentIds = tankIds.split(',').filter(Boolean);
 
     // Only animate on initial mount or when tanks actually change
-    if (prevTanksRef.current === tankIds) return;
+    if (prevTanksRef.current === tankIds) return undefined;
 
     const newTankIds = currentIds.filter((id) => !prevTankIds.includes(id));
 
     if (!cardsRef.current) {
       prevTanksRef.current = tankIds;
-      return;
+      return undefined;
     }
 
     // Animate only new tanks
@@ -69,22 +69,30 @@ export default function KanbanColumn({
       );
 
       if (newCards.length > 0) {
-        gsap.fromTo(
-          newCards,
-          { opacity: 0, y: 20, scale: 0.96 },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            duration: 0.4,
-            ease: 'power2.out',
-            stagger: { each: 0.08, from: 'start' },
-          }
-        );
+        void import('gsap').then(({ default: gsap }) => {
+          if (cancelled) return;
+
+          gsap.fromTo(
+            newCards,
+            { opacity: 0, y: 20, scale: 0.96 },
+            {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.4,
+              ease: 'power2.out',
+              stagger: { each: 0.08, from: 'start' },
+            }
+          );
+        });
       }
     }
 
     prevTanksRef.current = tankIds;
+
+    return () => {
+      cancelled = true;
+    };
   }, [tanks]);
 
   return (
@@ -122,12 +130,10 @@ export default function KanbanColumn({
       <div ref={cardsRef} className="flex-1 overflow-y-auto px-3 pt-3 pb-4 space-y-3 custom-scrollbar">
         {tanks.map((tank, idx) => (
           <div key={tank.id} className="tank-card-animate" data-tank-id={tank.id}>
-            <TankCard
+            <TankDetailPopover
               tank={tank}
-              isSelected={selectedTankId === tank.id}
-              onClick={() =>
-                onSelectTank(selectedTankId === tank.id ? null : tank.id)
-              }
+              open={selectedTankId === tank.id}
+              onOpenChange={(o) => onSelectTank(o ? tank.id : null)}
               animationDelay={idx * 30}
             />
           </div>

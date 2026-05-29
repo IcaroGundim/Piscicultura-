@@ -51,7 +51,7 @@ export function MetricCard({
         tabIndex={isEditable && !isEditing ? 0 : -1}
         aria-label={isEditable ? `Editar ${label}` : undefined}
         className={cn(
-          'flex items-center justify-between rounded-xl border py-2.5 px-3 transition-all duration-200',
+          'flex min-w-0 flex-col gap-2 rounded-xl border py-2.5 px-3 transition-all duration-200 sm:flex-row sm:items-center sm:justify-between',
           isEditable && !isEditing && 'cursor-pointer hover:bg-muted/50',
           highlight ? 'border-primary/20 bg-primary/5' : 'border-border bg-card/90'
         )}
@@ -64,13 +64,13 @@ export function MetricCard({
         }}
         title={isEditable && !isEditing ? 'Clique para editar este KPI' : undefined}
       >
-        <div className="flex items-center gap-2.5">
-          <div className={cn('flex items-center justify-center w-7 h-7 rounded-full', iconBgClass)}>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className={cn('flex shrink-0 items-center justify-center w-7 h-7 rounded-full', iconBgClass)}>
             <Icon className={cn('w-3.5 h-3.5', color)} />
           </div>
-          <span className="text-xs text-foreground/85">{label}</span>
+          <span className="min-w-0 text-xs leading-snug text-foreground/85 break-words">{label}</span>
         </div>
-        <div>
+        <div className="min-w-0 sm:text-right">
           {isEditing ? (
             <input
               autoFocus
@@ -82,12 +82,12 @@ export function MetricCard({
               onKeyDown={onEditKeyDown}
               onClick={(e) => e.stopPropagation()}
               aria-label={label}
-              className="h-8 w-24 rounded-md border border-input bg-primary/5 px-2 text-sm text-foreground ring-2 ring-primary/30 focus-visible:outline-none"
+              className="h-9 w-full rounded-md border border-input bg-primary/5 px-2 text-sm text-foreground ring-2 ring-primary/30 focus-visible:outline-none sm:h-8 sm:w-24"
             />
           ) : (
-            <span className="text-sm font-semibold text-foreground tabular-nums">
+            <span className="block min-w-0 break-words text-sm font-semibold text-foreground tabular-nums">
               {typeof value === 'number' ? value.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : value}
-              {unit && <span className="text-xs text-muted-foreground ml-1">{unit}</span>}
+              {unit && <span className="ml-1 text-xs text-muted-foreground">{unit}</span>}
             </span>
           )}
         </div>
@@ -101,7 +101,7 @@ export function MetricCard({
       tabIndex={isEditable && !isEditing ? 0 : -1}
       aria-label={isEditable ? `Editar ${label}` : undefined}
       className={cn(
-        'flex flex-col justify-between rounded-2xl border p-4 shadow-sm transition-all duration-200',
+        'flex min-w-0 flex-col justify-between rounded-2xl border p-4 shadow-sm transition-all duration-200',
         isEditable && !isEditing && 'cursor-pointer hover:-translate-y-0.5 hover:ring-1 hover:ring-primary/20',
         highlight ? 'border-primary/20 bg-primary/5' : 'border-border bg-card/90'
       )}
@@ -114,13 +114,13 @@ export function MetricCard({
       }}
       title={isEditable && !isEditing ? 'Clique para editar este KPI' : undefined}
     >
-      <div className="flex items-center gap-3 mb-3">
-        <div className={cn('flex items-center justify-center w-9 h-9 rounded-full', iconBgClass)}>
+      <div className="flex min-w-0 items-center gap-3 mb-3">
+        <div className={cn('flex shrink-0 items-center justify-center w-9 h-9 rounded-full', iconBgClass)}>
           <Icon className={cn('w-4 h-4', color)} />
         </div>
-        <span className="text-xs text-foreground/85 font-medium uppercase tracking-wider">{label}</span>
+        <span className="min-w-0 text-xs text-foreground/85 font-medium uppercase tracking-wider break-words">{label}</span>
       </div>
-      <div>
+      <div className="min-w-0">
         {isEditing ? (
           <input
             autoFocus
@@ -135,7 +135,7 @@ export function MetricCard({
             className="h-10 w-full rounded-md border border-input bg-primary/5 px-3 text-sm text-foreground shadow-sm ring-2 ring-primary/30 focus-visible:outline-none"
           />
         ) : (
-          <p className="text-2xl font-semibold text-foreground leading-none">
+          <p className="min-w-0 break-words text-2xl font-semibold text-foreground leading-none">
             {typeof value === 'number' ? value.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : value}
             {unit && <span className="text-sm text-muted-foreground font-normal ml-1.5">{unit}</span>}
           </p>

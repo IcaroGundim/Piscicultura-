@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import type { Tank, TankPhase } from '@/lib/types';
 import { PHASE_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -22,19 +22,18 @@ import {
 
 const PHASE_OPTIONS: TankPhase[] = ['bercario', 'recria', 'engorda', 'vazio'];
 
-interface TankCardProps {
+interface TankCardProps extends React.HTMLAttributes<HTMLDivElement> {
   tank: Tank;
   isSelected?: boolean;
-  onClick: () => void;
   animationDelay?: number;
 }
 
-export default function TankCard({
+const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
   tank,
   isSelected,
-  onClick,
   animationDelay = 0,
-}: TankCardProps) {
+  ...rest
+}, ref) {
   const [isPhasePopoverOpen, setIsPhasePopoverOpen] = useState(false);
 
   const bercarioLotes = useStore((s) => s.activeBercarioLotes);
@@ -77,11 +76,8 @@ export default function TankCard({
 
   return (
     <div
+      ref={ref}
       data-tank-id={tank.id}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
       className={cn(
         'group relative w-full cursor-pointer overflow-hidden rounded-2xl border text-left transition-all duration-300',
         'tank-card-enter',
@@ -96,6 +92,7 @@ export default function TankCard({
         ]
       )}
       style={{ animationDelay: `${animationDelay}ms` }}
+      {...rest}
     >
       {/* Faixa superior colorida */}
       <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-2xl ', getPhaseTopAccent(tank.phase))} />
@@ -193,4 +190,6 @@ export default function TankCard({
       </div>
     </div>
   );
-}
+});
+
+export default TankCard;

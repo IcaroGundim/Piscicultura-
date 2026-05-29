@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import type { Premissas, Custos } from '@/lib/types';
 import {
+  custoMaoObraAnual,
+  custoRacaoAnual,
+  outrasDespesasAnuais,
+} from '@/lib/lancamentos';
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -15,24 +20,7 @@ import {
 import { NumberField } from '@/components/forms/NumberField';
 import { Check, TrendingUp, Settings, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-function SectionCard({ title, icon: Icon, children }: {
-  title: string;
-  icon: React.ElementType;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-border/80 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5 sm:shadow-md">
-      <div className="flex min-w-0 items-center gap-2.5 mb-3 sm:mb-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
-          <Icon className="h-4 w-4 text-primary-foreground" />
-        </div>
-        <h2 className="min-w-0 text-sm font-bold leading-tight text-foreground">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
+import SectionCard from '@/components/Custos/SectionCard';
 
 interface PremissasDrawerProps {
   open: boolean;
@@ -43,7 +31,7 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
   const premissas = useStore((s) => s.activePremissas);
   const custos = useStore((s) => s.activeCustos);
   const updatePremissas = useStore((s) => s.updatePremissas);
-  const updateCustos = useStore((s) => s.updateCustos);
+  const setReceitaVenda = useStore((s) => s.setReceitaVenda);
 
   const [localPremissas, setLocalPremissas] = useState<Premissas>({ ...premissas });
   const [localCustos, setLocalCustos] = useState<Custos>({ ...custos });
@@ -57,14 +45,18 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
     }
   }, [open, premissas, custos]);
 
+  const localCustoRacao = custoRacaoAnual(localCustos.lancamentos);
+  const localCustoMaoObra = custoMaoObraAnual(localCustos.lancamentos);
+  const localOutrasDespesas = outrasDespesasAnuais(localCustos.lancamentos);
+
   const handleSave = () => {
     updatePremissas(localPremissas);
-    updateCustos(localCustos);
+    setReceitaVenda(localCustos.receita_venda);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const lucro = localCustos.receita_venda - localCustos.custo_racao - localCustos.outras_despesas;
+  const lucro = localCustos.receita_venda - localCustoRacao - localCustoMaoObra - localOutrasDespesas;
   const margemLucro = localCustos.receita_venda > 0
     ? ((lucro / localCustos.receita_venda) * 100).toFixed(1)
     : '0';
@@ -167,18 +159,10 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
                   onChange={(v) => setLocalCustos({ ...localCustos, receita_venda: v })}
                   step="10000"
                 />
-                <NumberField
-                  label="Custo — Ração" unit="R$"
-                  value={localCustos.custo_racao}
-                  onChange={(v) => setLocalCustos({ ...localCustos, custo_racao: v })}
-                  step="10000"
-                />
-                <NumberField
-                  label="Outras Despesas" unit="R$"
-                  value={localCustos.outras_despesas}
-                  onChange={(v) => setLocalCustos({ ...localCustos, outras_despesas: v })}
-                  step="10000"
-                />
+                <p className="text-xs text-muted-foreground">
+                  Custos de ração, mão de obra e outros agora são registrados como{' '}
+                  <span className="font-semibold">Lançamentos</span> na página de Custos.
+                </p>
               </div>
             </SectionCard>
 
@@ -193,13 +177,19 @@ export default function PremissasDrawer({ open, onOpenChange }: PremissasDrawerP
                 <div className="flex min-w-0 items-start justify-between gap-3 py-2 border-b border-border">
                   <span className="text-sm text-muted-foreground">Custo Ração</span>
                   <span className="min-w-0 text-right text-sm font-semibold text-red-600 break-words">
-                    − R$ {localCustos.custo_racao.toLocaleString('pt-BR')}
+                    − R$ {localCustoRacao.toLocaleString('pt-BR')}
                   </span>
                 </div>
                 <div className="flex min-w-0 items-start justify-between gap-3 py-2 border-b border-border">
-                  <span className="text-sm text-muted-foreground">Outras Despesas</span>
+                  <span className="text-sm text-muted-foreground">Mão de Obra</span>
                   <span className="min-w-0 text-right text-sm font-semibold text-red-600 break-words">
-                    − R$ {localCustos.outras_despesas.toLocaleString('pt-BR')}
+                    − R$ {localCustoMaoObra.toLocaleString('pt-BR')}
+                  </span>
+                </div>
+                <div className="flex min-w-0 items-start justify-between gap-3 py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">Outros Custos</span>
+                  <span className="min-w-0 text-right text-sm font-semibold text-red-600 break-words">
+                    − R$ {localOutrasDespesas.toLocaleString('pt-BR')}
                   </span>
                 </div>
                 <div className="flex min-w-0 items-start justify-between gap-3 pt-2">

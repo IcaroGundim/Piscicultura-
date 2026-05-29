@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
+import {
+  custoMaoObraAnual,
+  custoRacaoAnual,
+  outrasDespesasAnuais,
+} from '@/lib/lancamentos';
+
+const KG_PER_SAC = 25;
 
 export function useProductionMetrics() {
   const bercarioLotes = useStore((s) => s.activeBercarioLotes);
@@ -8,8 +15,13 @@ export function useProductionMetrics() {
   const premissas = useStore((s) => s.activePremissas);
   const custos = useStore((s) => s.activeCustos);
   const tanks = useStore((s) => s.activeTanks);
+  const viewPeriod = useStore((s) => s.viewPeriod);
 
   return useMemo(() => {
+    const isMensal = viewPeriod === 'mensal';
+    const periodFactor = isMensal ? 1 / 12 : 1;
+    const periodLabel = isMensal ? '/mês' : '/ano';
+    const periodLabelShort = isMensal ? 'mês' : 'ano';
     const allLotes = [...bercarioLotes, ...recriaLotes, ...engordaLotes];
 
     const totalFish = allLotes.reduce((s, l) => s + l.qtd_peixes, 0);
@@ -26,10 +38,33 @@ export function useProductionMetrics() {
     const activeTanks = countByPhase('bercario') + countByPhase('recria') + countByPhase('engorda');
 
     const receita = custos.receita_venda;
-    const custoRacao = custos.custo_racao;
-    const outrasDespesas = custos.outras_despesas;
-    const lucro = receita - custoRacao - outrasDespesas;
+    const custoRacao = custoRacaoAnual(custos.lancamentos);
+    const custoMaoObra = custoMaoObraAnual(custos.lancamentos);
+    const outrasDespesas = outrasDespesasAnuais(custos.lancamentos);
+    const custoTotal = custoRacao + custoMaoObra + outrasDespesas;
+    const lucro = receita - custoTotal;
     const margemLucro = receita > 0 ? ((lucro / receita) * 100).toFixed(2) : '0';
+
+    const custoPorKg = premissas.producao_anual > 0
+      ? custoTotal / premissas.producao_anual
+      : 0;
+
+    const pct = (part: number) => (custoTotal > 0 ? (part / custoTotal) * 100 : 0);
+    const percentRacao = pct(custoRacao);
+    const percentMaoObra = pct(custoMaoObra);
+    const percentOutras = pct(outrasDespesas);
+
+    const biomassaPorFase = {
+      bercario: bercarioLotes.reduce((s, l) => s + l.peso_total_kg, 0),
+      recria: recriaLotes.reduce((s, l) => s + l.peso_total_kg, 0),
+      engorda: engordaLotes.reduce((s, l) => s + l.peso_total_kg, 0),
+    };
+
+    const racaoKgPorFase = {
+      bercario: bercarioLotes.reduce((s, l) => s + l.racao_total_sc, 0) * KG_PER_SAC,
+      recria: recriaLotes.reduce((s, l) => s + l.racao_total_sc, 0) * KG_PER_SAC,
+      engorda: engordaLotes.reduce((s, l) => s + l.racao_total_sc, 0) * KG_PER_SAC,
+    };
 
     return {
       totalFish,
@@ -43,11 +78,32 @@ export function useProductionMetrics() {
       tanksCount: tanks.length,
       receita,
       custoRacao,
+      custoMaoObra,
       outrasDespesas,
+      custoTotal,
+      custoPorKg,
+      percentRacao,
+      percentMaoObra,
+      percentOutras,
+      biomassaPorFase,
+      racaoKgPorFase,
       lucro,
       margemLucro,
       isProfitable: lucro >= 0,
       premissas,
+      // Perspectiva temporal (anual ↔ mensal): valores *Display já convertidos.
+      viewPeriod,
+      isMensal,
+      periodFactor,
+      periodLabel,
+      periodLabelShort,
+      receitaDisplay: receita * periodFactor,
+      custoRacaoDisplay: custoRacao * periodFactor,
+      custoMaoObraDisplay: custoMaoObra * periodFactor,
+      outrasDespesasDisplay: outrasDespesas * periodFactor,
+      custoTotalDisplay: custoTotal * periodFactor,
+      lucroDisplay: lucro * periodFactor,
+      producaoDisplay: premissas.producao_anual * periodFactor,
     };
-  }, [bercarioLotes, recriaLotes, engordaLotes, premissas, custos, tanks]);
+  }, [bercarioLotes, recriaLotes, engordaLotes, premissas, custos, tanks, viewPeriod]);
 }

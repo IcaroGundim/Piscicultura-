@@ -67,11 +67,78 @@ export interface Premissas {
   periodo_recria: number;
 }
 
+export type TipoLancamento = 'custo' | 'receita';
+
+export type CategoriaCusto =
+  | 'racao'
+  | 'ferramentas'
+  | 'sal_grosso'
+  | 'cal'
+  | 'mao_obra'
+  | 'outras';
+
+export type CategoriaReceita =
+  | 'venda_peixe'
+  | 'venda_processados'
+  | 'outras_receitas';
+
+export type CategoriaLancamento = CategoriaCusto | CategoriaReceita;
+
+export interface Lancamento {
+  id: string;
+  ano: number;
+  mes: number;
+  tipo?: TipoLancamento;
+  categoria: CategoriaLancamento;
+  quantidade: number;
+  precoUnitario: number;
+  descricao?: string;
+}
+
 export interface Custos {
   receita_venda: number;
-  custo_racao: number;
-  outras_despesas: number;
+  lancamentos: Lancamento[];
 }
+
+export const CATEGORIA_CUSTO_LABELS: Record<CategoriaCusto, string> = {
+  racao: 'Ração',
+  ferramentas: 'Ferramentas e Maquinário',
+  sal_grosso: 'Sal grosso',
+  cal: 'Cal',
+  mao_obra: 'Mão de obra',
+  outras: 'Outros',
+};
+
+export const CATEGORIA_CUSTO_COLORS: Record<CategoriaCusto, string> = {
+  racao: '#2563eb',
+  ferramentas: '#a16207',
+  sal_grosso: '#0891b2',
+  cal: '#94ba65',
+  mao_obra: '#f59e0b',
+  outras: '#52525b',
+};
+
+export const CATEGORIA_RECEITA_LABELS: Record<CategoriaReceita, string> = {
+  venda_peixe: 'Venda de peixe',
+  venda_processados: 'Venda de processados',
+  outras_receitas: 'Outras receitas',
+};
+
+export const CATEGORIA_RECEITA_COLORS: Record<CategoriaReceita, string> = {
+  venda_peixe: '#10b981',
+  venda_processados: '#0ea5e9',
+  outras_receitas: '#a855f7',
+};
+
+export const CATEGORIA_LANCAMENTO_LABELS: Record<CategoriaLancamento, string> = {
+  ...CATEGORIA_CUSTO_LABELS,
+  ...CATEGORIA_RECEITA_LABELS,
+};
+
+export const CATEGORIA_LANCAMENTO_COLORS: Record<CategoriaLancamento, string> = {
+  ...CATEGORIA_CUSTO_COLORS,
+  ...CATEGORIA_RECEITA_COLORS,
+};
 
 export const PHASE_LABELS: Record<TankPhase, string> = {
   bercario: 'Berçário',

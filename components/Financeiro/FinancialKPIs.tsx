@@ -11,18 +11,31 @@ export default function FinancialKPIs() {
     totalFeedMonthly,
     receita,
     custoRacao,
+    custoMaoObra,
     outrasDespesas,
     lucro,
     margemLucro,
     isProfitable,
     activeTanks,
     premissas,
+    periodFactor,
+    periodLabel,
+    isMensal,
   } = useProductionMetrics();
 
-  // Safe percentage calculations to prevent division by zero
-  const custoPercent = receita > 0 ? ((custoRacao + outrasDespesas) / receita) * 100 : 0;
+  // Safe percentage calculations (proporções não mudam com o período)
+  const custosBrutos = custoRacao + custoMaoObra + outrasDespesas;
+  const custoPercent = receita > 0 ? (custosBrutos / receita) * 100 : 0;
   const lucroPercent = receita > 0 ? (lucro / receita) * 100 : 0;
   const receitaForBar = receita > 0 ? receita : 1; // prevent NaN
+
+  // Valores ajustados ao período ativo
+  const receitaDisp = receita * periodFactor;
+  const custoRacaoDisp = custoRacao * periodFactor;
+  const custoMaoObraDisp = custoMaoObra * periodFactor;
+  const outrasDespesasDisp = outrasDespesas * periodFactor;
+  const custosTotalDisp = custosBrutos * periodFactor;
+  const lucroDisp = lucro * periodFactor;
 
   const isLoading = totalFish === 0 && totalBiomass === 0 && activeTanks === 0;
 
@@ -60,10 +73,12 @@ export default function FinancialKPIs() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-700" />
-              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Receita Anual</span>
+              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
+                Receita {isMensal ? 'Mensal' : 'Anual'}
+              </span>
             </div>
             <span className="text-xl font-bold text-emerald-700 font-heading">
-              R$ {receita.toLocaleString('pt-BR')}
+              R$ {receitaDisp.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
             </span>
           </div>
         </div>
@@ -73,16 +88,20 @@ export default function FinancialKPIs() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-rose-700" />
-              <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Custos Totais</span>
+              <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider">
+                Custos Totais{periodLabel}
+              </span>
             </div>
             <div className="text-right">
               <span className="text-xl font-bold text-rose-700 font-heading">
-                R$ {(custoRacao + outrasDespesas).toLocaleString('pt-BR')}
+                R$ {custosTotalDisp.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
               </span>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs text-rose-500/80">Ração: R$ {custoRacao.toLocaleString('pt-BR')}</span>
+                <span className="text-xs text-rose-500/80">Ração: R$ {custoRacaoDisp.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
                 <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">Outros: R$ {outrasDespesas.toLocaleString('pt-BR')}</span>
+                <span className="text-xs text-rose-500/80">M.O.: R$ {custoMaoObraDisp.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">Outros: R$ {outrasDespesasDisp.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
               </div>
             </div>
           </div>
@@ -101,7 +120,8 @@ export default function FinancialKPIs() {
                 </div>
               </div>
               <span className={`text-2xl font-bold ${isProfitable ? 'text-emerald-700' : 'text-orange-700'} font-heading`}>
-                R$ {lucro.toLocaleString('pt-BR')}
+                R$ {lucroDisp.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                <span className="text-xs font-medium text-muted-foreground ml-1">{periodLabel}</span>
               </span>
             </div>
           </div>

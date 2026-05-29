@@ -103,11 +103,8 @@ export default function TankFinancialTable() {
                   >
                     <td role="cell" className="px-4 py-3 whitespace-nowrap">
                       <span className="font-bold text-foreground font-heading">
-                        T{tank.id.toString().padStart(2, '0')}
+                        Tanque {tank.id}
                       </span>
-                      {tank.subfase && (
-                        <span className="block text-xs text-muted-foreground">{tank.subfase}</span>
-                      )}
                     </td>
                     <td role="cell" className="px-4 py-3 whitespace-nowrap">
                       <span

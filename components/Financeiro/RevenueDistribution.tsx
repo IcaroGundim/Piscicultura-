@@ -43,10 +43,9 @@ export default function RevenueDistribution() {
   const bercarioLotes = useStore((s) => s.activeBercarioLotes);
   const recriaLotes = useStore((s) => s.activeRecriaLotes);
   const engordaLotes = useStore((s) => s.activeEngordaLotes);
-  const premissas = useStore((s) => s.activePremissas);
   const phaseColors = useStore((s) => s.phaseColors);
 
-  const { biomassByPhase, totalBiomass, receitaEstimada, pieData } = useMemo(() => {
+  const { biomassByPhase, totalBiomass, pieData } = useMemo(() => {
     const phases = [
       {
         phase: 'bercario',
@@ -69,8 +68,6 @@ export default function RevenueDistribution() {
     ].filter((p) => p.biomass > 0);
 
     const total = phases.reduce((s, p) => s + p.biomass, 0);
-    const receita = total * premissas.preco_venda * premissas.ciclos_ano;
-
     const pie = phases.map((p) => ({
       name: p.label,
       value: p.biomass,
@@ -78,8 +75,8 @@ export default function RevenueDistribution() {
       fish: p.fish,
     }));
 
-    return { biomassByPhase: phases, totalBiomass: total, receitaEstimada: receita, pieData: pie };
-  }, [bercarioLotes, recriaLotes, engordaLotes, premissas, phaseColors]);
+    return { biomassByPhase: phases, totalBiomass: total, pieData: pie };
+  }, [bercarioLotes, recriaLotes, engordaLotes, phaseColors]);
 
   if (biomassByPhase.length === 0) {
     return (
@@ -101,9 +98,6 @@ export default function RevenueDistribution() {
           <h3 className="text-sm font-bold text-foreground">
             Distribuição de Biomassa
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Receita estimada: R$ {receitaEstimada.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/ano
-          </p>
         </div>
       </div>
 

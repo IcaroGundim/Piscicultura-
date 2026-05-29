@@ -14,6 +14,7 @@ import type {
   BercarioLote,
   Custos,
   EngordaLote,
+  Lancamento,
   LocationData,
   LocationKey,
   Premissas,
@@ -32,6 +33,7 @@ import {
   normalizeProjectState,
   selectPersistedProjectState,
   type ProjectStateSnapshot,
+  type ViewPeriod,
 } from './projectState';
 
 interface AppState {
@@ -52,7 +54,10 @@ interface AppState {
   updateRecriaLote: (tankId: number, data: Partial<RecriaLote>) => void;
   updateEngordaLote: (tankId: number, data: Partial<EngordaLote>) => void;
   updatePremissas: (data: Partial<Premissas>) => void;
-  updateCustos: (data: Partial<Custos>) => void;
+  setReceitaVenda: (valor: number) => void;
+  addLancamento: (input: Omit<Lancamento, 'id'>) => void;
+  updateLancamento: (id: string, patch: Partial<Omit<Lancamento, 'id'>>) => void;
+  removeLancamento: (id: string) => void;
   addBercarioLote: (lote: BercarioLote) => void;
   addRecriaLote: (lote: RecriaLote) => void;
   addEngordaLote: (lote: EngordaLote) => void;
@@ -62,12 +67,20 @@ interface AppState {
 
   phaseColors: Record<TankPhase, string>;
   setPhaseColor: (phase: TankPhase, color: string) => void;
+
+  viewPeriod: ViewPeriod;
+  referenceMonth: number;
+  referenceYear: number;
+  updatedAt: string | null;
+  setViewPeriod: (period: ViewPeriod) => void;
+  setReferenceMonth: (year: number, month: number) => void;
+  setUpdatedAt: (iso: string | null) => void;
 }
 
 type AppStore = StoreApi<AppState>;
 
 interface StoreProviderProps {
-  initialState: ProjectStateSnapshot;
+  initialState: ProjectStateSnapshot & { updatedAt?: string | null };
   children: ReactNode;
 }
 
@@ -96,6 +109,15 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
 
     ...buildDerivedState(initialState.locations, initialState.activeLocation),
     phaseColors: { ...initialState.phaseColors },
+
+    viewPeriod: initialState.viewPeriod,
+    referenceMonth: initialState.referenceMonth,
+    referenceYear: initialState.referenceYear,
+    updatedAt: null,
+    setViewPeriod: (period) => set({ viewPeriod: period }),
+    setReferenceMonth: (year, month) =>
+      set({ referenceYear: year, referenceMonth: Math.max(0, Math.min(11, month)) }),
+    setUpdatedAt: (iso) => set({ updatedAt: iso }),
 
     setLocation: (key: LocationKey) => {
       const state = get();
@@ -275,10 +297,45 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
         }))
       ),
 
-    updateCustos: (data) =>
+    setReceitaVenda: (valor) =>
       set((state) =>
         updateLocationInState(state, (location) => ({
-          custos: { ...location.custos, ...data },
+          custos: { ...location.custos, receita_venda: valor },
+        }))
+      ),
+
+    addLancamento: (input) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          custos: {
+            ...location.custos,
+            lancamentos: [
+              ...location.custos.lancamentos,
+              { ...input, id: generateLancamentoId() },
+            ],
+          },
+        }))
+      ),
+
+    updateLancamento: (id, patch) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          custos: {
+            ...location.custos,
+            lancamentos: location.custos.lancamentos.map((l) =>
+              l.id === id ? { ...l, ...patch } : l
+            ),
+          },
+        }))
+      ),
+
+    removeLancamento: (id) =>
+      set((state) =>
+        updateLocationInState(state, (location) => ({
+          custos: {
+            ...location.custos,
+            lancamentos: location.custos.lancamentos.filter((l) => l.id !== id),
+          },
         }))
       ),
 
@@ -353,6 +410,13 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
   }));
 }
 
+function generateLancamentoId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  return `lan_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+}
+
 function updateLocationInState(
   state: AppState,
   updater: (location: LocationData) => Partial<LocationData>
@@ -398,7 +462,10 @@ function useBoundStore<T>(selector: (state: AppState) => T): T {
   return useZustandStore(store, selector);
 }
 
-async function persistProjectState(snapshot: ProjectStateSnapshot, keepalive = false) {
+async function persistProjectState(
+  snapshot: ProjectStateSnapshot,
+  keepalive = false
+): Promise<string | null> {
   const response = await fetch(STATE_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -411,6 +478,13 @@ async function persistProjectState(snapshot: ProjectStateSnapshot, keepalive = f
   if (!response.ok) {
     throw new Error(`Falha ao salvar estado do projeto (${response.status})`);
   }
+
+  try {
+    const body = (await response.json()) as { updatedAt?: string | null };
+    return body?.updatedAt ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function StoreProvider({ initialState, children }: StoreProviderProps) {
@@ -418,6 +492,9 @@ export function StoreProvider({ initialState, children }: StoreProviderProps) {
 
   if (!storeRef.current) {
     storeRef.current = createProjectStore(initialState);
+    if (initialState.updatedAt) {
+      storeRef.current.getState().setUpdatedAt(initialState.updatedAt);
+    }
   }
 
   useEffect(() => {
@@ -447,8 +524,11 @@ export function StoreProvider({ initialState, children }: StoreProviderProps) {
         }
 
         try {
-          await persistProjectState(snapshot, keepalive);
+          const updatedAt = await persistProjectState(snapshot, keepalive);
           lastPersistedSignature = signature;
+          if (updatedAt) {
+            store.getState().setUpdatedAt(updatedAt);
+          }
         } catch (error) {
           console.error('Erro ao salvar estado no Postgres:', error);
         }

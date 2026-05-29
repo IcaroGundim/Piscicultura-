@@ -6,14 +6,13 @@ import type { TankPhase } from '@/lib/types';
 import { PHASE_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import KanbanColumn from './KanbanColumn';
-import TankDetailModal from './TankDetailModal';
-import { Fish, Sprout, Scale, CircleOff } from 'lucide-react';
+import { Fish, FishSymbol, TrendingUp, CircleOff } from 'lucide-react';
 
 const phases: TankPhase[] = ['bercario', 'recria', 'engorda', 'vazio'];
 const phaseIcons: Record<TankPhase, typeof Fish> = {
-  bercario: Fish,
-  recria: Sprout,
-  engorda: Scale,
+  bercario: FishSymbol,
+  recria: Fish,
+  engorda: TrendingUp,
   vazio: CircleOff,
 };
 
@@ -45,11 +44,6 @@ export default function KanbanBoard({ showVazio = false }: KanbanBoardProps) {
     }
     return map;
   }, [tanks]);
-
-  const selectedTank = useMemo(
-    () => tanks.find((t) => t.id === selectedTankId) ?? null,
-    [tanks, selectedTankId]
-  );
 
   const activeMobilePhase = !showVazio && mobilePhase === 'vazio' ? 'bercario' : mobilePhase;
 
@@ -117,12 +111,6 @@ export default function KanbanBoard({ showVazio = false }: KanbanBoardProps) {
           />
         </div>
       </div>
-
-      {/* Modal */}
-      <TankDetailModal
-        tank={selectedTank}
-        onClose={() => setSelectedTankId(null)}
-      />
     </div>
   );
 }
