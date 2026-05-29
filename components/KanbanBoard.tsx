@@ -22,7 +22,11 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ showVazio = false }: KanbanBoardProps) {
   const tanks = useStore((s) => s.activeTanks);
-  const [selectedTankId, setSelectedTankId] = useState<number | null>(null);
+  // Estado de seleção independente por board: desktop e mobile ficam ambos
+  // montados (alternados via CSS), então compartilhar um único id faria o
+  // popover do board oculto abrir em paralelo e fechar tudo no ato.
+  const [selectedDesktopTankId, setSelectedDesktopTankId] = useState<number | null>(null);
+  const [selectedMobileTankId, setSelectedMobileTankId] = useState<number | null>(null);
   const [mobilePhase, setMobilePhase] = useState<TankPhase>('bercario');
 
   const visiblePhases = useMemo(
@@ -94,8 +98,8 @@ export default function KanbanBoard({ showVazio = false }: KanbanBoardProps) {
               <KanbanColumn
                 phase={phase}
                 tanks={tanksByPhase[phase]}
-                selectedTankId={selectedTankId}
-                onSelectTank={setSelectedTankId}
+                selectedTankId={selectedDesktopTankId}
+                onSelectTank={setSelectedDesktopTankId}
               />
             </div>
           ))}
@@ -106,8 +110,8 @@ export default function KanbanBoard({ showVazio = false }: KanbanBoardProps) {
           <KanbanColumn
             phase={activeMobilePhase}
             tanks={tanksByPhase[activeMobilePhase]}
-            selectedTankId={selectedTankId}
-            onSelectTank={setSelectedTankId}
+            selectedTankId={selectedMobileTankId}
+            onSelectTank={setSelectedMobileTankId}
           />
         </div>
       </div>
