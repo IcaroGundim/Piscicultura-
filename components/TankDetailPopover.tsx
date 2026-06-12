@@ -39,7 +39,7 @@ export default function TankDetailPopover({
         side="right"
         align="start"
         sideOffset={10}
-        className="w-[min(32rem,calc(100vw-1.5rem))] overflow-hidden p-0"
+        className="w-[min(32rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-border bg-card p-0 shadow-2xl shadow-black/10 ring-0 backdrop-blur-none duration-150"
       >
         <TankDetailPanel
           tank={tank}

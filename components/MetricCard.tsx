@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface MetricCardProps {
@@ -51,9 +52,10 @@ export function MetricCard({
         tabIndex={isEditable && !isEditing ? 0 : -1}
         aria-label={isEditable ? `Editar ${label}` : undefined}
         className={cn(
-          'flex min-w-0 flex-col gap-2 rounded-xl border py-2.5 px-3 transition-all duration-200 sm:flex-row sm:items-center sm:justify-between',
-          isEditable && !isEditing && 'cursor-pointer hover:bg-muted/50',
-          highlight ? 'border-primary/20 bg-primary/5' : 'border-border bg-card/90'
+          'group flex min-w-0 flex-col gap-2.5 rounded-xl border p-3 transition-all duration-200',
+          isEditable && !isEditing && 'cursor-pointer hover:border-primary/30 hover:shadow-sm',
+          isEditing && 'border-primary/40 ring-2 ring-primary/20',
+          highlight ? 'border-primary/20 bg-primary/[0.04]' : 'border-border bg-card/90'
         )}
         onClick={!isEditing ? onEdit : undefined}
         onKeyDown={(e) => {
@@ -62,35 +64,45 @@ export function MetricCard({
             onEdit?.();
           }
         }}
-        title={isEditable && !isEditing ? 'Clique para editar este KPI' : undefined}
+        title={isEditable && !isEditing ? 'Clique para editar' : undefined}
       >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className={cn('flex shrink-0 items-center justify-center w-7 h-7 rounded-full', iconBgClass)}>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className={cn('flex shrink-0 items-center justify-center w-6 h-6 rounded-lg', iconBgClass)}>
             <Icon className={cn('w-3.5 h-3.5', color)} />
           </div>
-          <span className="min-w-0 text-xs leading-snug text-foreground/85 break-words">{label}</span>
-        </div>
-        <div className="min-w-0 sm:text-right">
-          {isEditing ? (
-            <input
-              autoFocus
-              type="number"
-              step={step}
-              value={editValue}
-              onChange={(e) => onEditChange?.(e.target.value)}
-              onBlur={onEditBlur}
-              onKeyDown={onEditKeyDown}
-              onClick={(e) => e.stopPropagation()}
-              aria-label={label}
-              className="h-9 w-full rounded-md border border-input bg-primary/5 px-2 text-sm text-foreground ring-2 ring-primary/30 focus-visible:outline-none sm:h-8 sm:w-24"
-            />
-          ) : (
-            <span className="block min-w-0 break-words text-sm font-semibold text-foreground tabular-nums">
-              {typeof value === 'number' ? value.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : value}
-              {unit && <span className="ml-1 text-xs text-muted-foreground">{unit}</span>}
-            </span>
+          <span className="min-w-0 flex-1 truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </span>
+          {isEditable && !isEditing && (
+            <Pencil className="h-3 w-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
           )}
         </div>
+        {isEditing ? (
+          <input
+            autoFocus
+            type="number"
+            step={step}
+            value={editValue}
+            onChange={(e) => onEditChange?.(e.target.value)}
+            onBlur={onEditBlur}
+            onKeyDown={onEditKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={label}
+            className="h-9 w-full rounded-md border border-input bg-primary/5 px-2 text-lg font-semibold text-foreground ring-2 ring-primary/30 focus-visible:outline-none"
+          />
+        ) : (
+          <p
+            className={cn(
+              'min-w-0 break-words font-semibold leading-none tabular-nums text-foreground',
+              highlight ? 'text-2xl' : 'text-xl'
+            )}
+          >
+            {typeof value === 'number'
+              ? value.toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+              : value}
+            {unit && <span className="ml-1 text-xs font-normal text-muted-foreground">{unit}</span>}
+          </p>
+        )}
       </div>
     );
   }

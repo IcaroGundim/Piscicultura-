@@ -8,10 +8,8 @@ import PhaseBadge from './PhaseBadge';
 import { X, Pencil, Droplets, Package, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { getPhaseDotColor } from '@/lib/phase-utils';
+import { MetricFieldsList } from './MetricFieldsList';
 import { SectionTitle } from './SectionTitle';
-import { Skeleton } from './ui/skeleton';
-import { MetricFieldsGrid } from './MetricFieldsGrid';
 import {
   PHASE_OPTIONS,
   PHASE_FIELDS,
@@ -359,8 +357,6 @@ export default function TankDetailPanel({
     );
   };
 
-  const capacityTitle = tank.phase === 'engorda' ? 'Capacidade & Produção Final' : 'Capacidade & Produção Projetada';
-
   return (
     <div className="flex max-h-[92dvh] flex-col sm:max-h-[90vh]">
       {/* Header */}
@@ -436,7 +432,6 @@ export default function TankDetailPanel({
               <>
                 <span className="hidden text-border sm:inline">•</span>
                 <span className="flex min-w-0 items-center gap-1">
-                  <div className={cn('w-1.5 h-1.5 shrink-0 rounded-full', getPhaseDotColor(tank.phase))} />
                   {tank.subfase}
                 </span>
               </>
@@ -462,53 +457,38 @@ export default function TankDetailPanel({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar relative sm:px-5 sm:py-5">
         {!hasLoteActive && tank.phase !== 'vazio' ? (
-          <div className="flex flex-col items-center justify-center h-full min-h-[300px] rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-center sm:p-12">
-            <div className="grid grid-cols-2 gap-3 w-full mb-8">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
+          <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/15">
+              <Package className="h-6 w-6 text-primary" />
             </div>
-            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-muted mb-4 sm:h-16 sm:w-16">
-              <Package className="w-6 h-6 text-muted-foreground sm:h-7 sm:w-7" />
-            </div>
-            <h3 className="text-base font-semibold text-foreground mb-2">Sem lote cadastrado</h3>
-            <p className="text-sm text-muted-foreground max-w-md mb-6">
-              Este tanque está definido como <strong>{PHASE_LABELS[tank.phase]}</strong>, mas nenhum lote foi inicializado para preencher as projeções.
+            <h3 className="mb-1.5 text-base font-semibold text-foreground">Sem lote cadastrado</h3>
+            <p className="mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              Fase <strong className="font-semibold text-foreground">{PHASE_LABELS[tank.phase]}</strong> definida, mas ainda sem lote para gerar as projeções.
             </p>
             <Button
               onClick={handleInitializeLote}
-              className="rounded-full px-6 py-2.5 text-sm font-medium shadow-md shadow-primary/25 transition-all hover:scale-105"
+              className="rounded-full px-6 text-sm font-medium shadow-sm shadow-primary/25 transition-transform hover:scale-[1.03]"
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className="h-4 w-4" />
               Inicializar Lote
             </Button>
           </div>
         ) : tank.phase === 'vazio' ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-center sm:p-12">
-            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-muted mb-4 sm:h-16 sm:w-16">
-              <Droplets className="w-6 h-6 text-muted-foreground sm:h-7 sm:w-7" />
+          <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-10 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted ring-1 ring-border">
+              <Droplets className="h-6 w-6 text-muted-foreground" />
             </div>
-            <h3 className="text-base font-semibold text-foreground mb-2">Tanque Vazio</h3>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Mude a fase do tanque para designar um novo lote de produção e calcular as projeções de crescimento.
+            <h3 className="mb-1.5 text-base font-semibold text-foreground">Tanque vazio</h3>
+            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+              Altere a fase no topo para designar um novo lote e calcular as projeções de crescimento.
             </p>
           </div>
         ) : (
-          <div className="space-y-5 pb-4 sm:space-y-6">
+          <div className="space-y-5 pb-2 sm:space-y-6">
             {/* Capacidade & Produção */}
             <div>
-              {tank.phase === 'bercario' ? (
-                <SectionTitle>{capacityTitle}</SectionTitle>
-              ) : (
-                <div className="flex flex-col gap-2 mb-3 mt-6 first:mt-0 sm:flex-row sm:items-end sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3 w-full">
-                    <h3 className="min-w-0 text-xs font-bold text-muted-foreground uppercase tracking-widest">{capacityTitle}</h3>
-                    <div className="w-full h-px bg-gradient-to-r from-border to-transparent" />
-                  </div>
-                  {renderPeriodoEdit()}
-                </div>
-              )}
-              <MetricFieldsGrid
+              <SectionTitle action={renderPeriodoEdit()}>Capacidade &amp; Produção</SectionTitle>
+              <MetricFieldsList
                 fields={capacityFields}
                 phase={tank.phase}
                 lote={lote}
@@ -523,7 +503,7 @@ export default function TankDetailPanel({
             {/* Manejo Alimentar */}
             <div>
               <SectionTitle>Manejo Alimentar (Projeção)</SectionTitle>
-              <MetricFieldsGrid
+              <MetricFieldsList
                 fields={feedingFields}
                 phase={tank.phase}
                 lote={lote}
