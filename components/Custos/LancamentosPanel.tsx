@@ -281,6 +281,7 @@ export default function LancamentosPanel({
                           onClick={() => handleEdit(l)}
                           className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                           title={`Editar ${tipoLabel}`}
+                          aria-label={`Editar ${tipoLabel}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -289,6 +290,7 @@ export default function LancamentosPanel({
                           onClick={() => handleRemove(l.id)}
                           className="rounded-md p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
                           title={`Excluir ${tipoLabel}`}
+                          aria-label={`Excluir ${tipoLabel}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

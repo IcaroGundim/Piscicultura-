@@ -71,10 +71,14 @@ interface AppState {
   referenceMonth: number;
   referenceYear: number;
   updatedAt: string | null;
+  saveStatus: SaveStatus;
   setViewPeriod: (period: ViewPeriod) => void;
   setReferenceMonth: (year: number, month: number) => void;
   setUpdatedAt: (iso: string | null) => void;
+  setSaveStatus: (status: SaveStatus) => void;
 }
+
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 type AppStore = StoreApi<AppState>;
 
@@ -113,10 +117,12 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
     referenceMonth: initialState.referenceMonth,
     referenceYear: initialState.referenceYear,
     updatedAt: null,
+    saveStatus: 'idle',
     setViewPeriod: (period) => set({ viewPeriod: period }),
     setReferenceMonth: (year, month) =>
       set({ referenceYear: year, referenceMonth: Math.max(0, Math.min(11, month)) }),
     setUpdatedAt: (iso) => set({ updatedAt: iso }),
+    setSaveStatus: (status) => set({ saveStatus: status }),
 
     setLocation: (key: LocationKey) => {
       const state = get();
@@ -454,18 +460,32 @@ function useBoundStore<T>(selector: (state: AppState) => T): T {
   return useZustandStore(store, selector);
 }
 
+type PersistResult =
+  | { status: 'ok'; updatedAt: string | null }
+  | { status: 'conflict' };
+
 async function persistProjectState(
   snapshot: ProjectStateSnapshot,
+  expectedUpdatedAt: string | null,
   keepalive = false
-): Promise<string | null> {
+): Promise<PersistResult> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (expectedUpdatedAt) {
+    headers['x-expected-updated-at'] = expectedUpdatedAt;
+  }
+
   const response = await fetch(STATE_ENDPOINT, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(snapshot),
     keepalive,
   });
+
+  if (response.status === 409) {
+    return { status: 'conflict' };
+  }
 
   if (!response.ok) {
     throw new Error(`Falha ao salvar estado do projeto (${response.status})`);
@@ -473,9 +493,9 @@ async function persistProjectState(
 
   try {
     const body = (await response.json()) as { updatedAt?: string | null };
-    return body?.updatedAt ?? null;
+    return { status: 'ok', updatedAt: body?.updatedAt ?? null };
   } catch {
-    return null;
+    return { status: 'ok', updatedAt: null };
   }
 }
 
@@ -515,13 +535,28 @@ export function StoreProvider({ initialState, children }: StoreProviderProps) {
           return;
         }
 
+        store.getState().setSaveStatus('saving');
         try {
-          const updatedAt = await persistProjectState(snapshot, keepalive);
-          lastPersistedSignature = signature;
-          if (updatedAt) {
-            store.getState().setUpdatedAt(updatedAt);
+          const expectedUpdatedAt = store.getState().updatedAt;
+          const result = await persistProjectState(snapshot, expectedUpdatedAt, keepalive);
+
+          if (result.status === 'conflict') {
+            // Outro cliente alterou o estado; não sobrescreve. O usuário é
+            // avisado e deve recarregar para obter a versão mais recente.
+            store.getState().setSaveStatus('error');
+            console.warn(
+              'Conflito ao salvar: o estado foi alterado em outro lugar. Recarregue a página.'
+            );
+            return;
           }
+
+          lastPersistedSignature = signature;
+          if (result.updatedAt) {
+            store.getState().setUpdatedAt(result.updatedAt);
+          }
+          store.getState().setSaveStatus('saved');
         } catch (error) {
+          store.getState().setSaveStatus('error');
           console.error('Erro ao salvar estado no Postgres:', error);
         }
       });

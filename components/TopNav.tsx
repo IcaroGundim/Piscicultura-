@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { LOCATION_LABELS } from '@/lib/types';
 import type { LocationKey } from '@/lib/types';
+import SaveStatus from './SaveStatus';
 
 const PhaseColorConfig = dynamic(() => import('./PhaseColorConfig'), {
   ssr: false,
@@ -364,6 +365,11 @@ export default function TopNav() {
 
           {/* Spacer  */}
           <div className="flex-1" />
+
+          {/* Status de salvamento */}
+          <div className="mr-1 hidden items-center shrink-0 lg:flex">
+            <SaveStatus />
+          </div>
 
           <div className="hidden items-center gap-2 shrink-0 md:flex">
             <button

@@ -93,6 +93,7 @@ export default function TankPopover() {
               value={areaM2 || ''}
               onChange={(e) => setAreaM2(parseFloat(e.target.value) || 0)}
               placeholder="Ex: 5000"
+              aria-label="Área do tanque em metros quadrados"
               className="h-9 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
             />
             {areaM2 > 0 && (
@@ -127,6 +128,7 @@ export default function TankPopover() {
               value={subfase}
               onChange={(e) => setSubfase(e.target.value)}
               placeholder="Ex: Módulo 1"
+              aria-label="Subfase do tanque (opcional)"
               className="h-9 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
             />
           </div>

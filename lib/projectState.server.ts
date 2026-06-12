@@ -10,6 +10,20 @@ type SqlClient = any;
 
 export type ProjectStateResponse = ProjectStateSnapshot & { updatedAt: string | null };
 
+/**
+ * Lançado quando a gravação falha na trava otimista: o estado no banco foi
+ * alterado por outro cliente desde o último carregamento. Carrega o estado
+ * mais recente do servidor para que o cliente possa reconciliar.
+ */
+export class ProjectStateConflictError extends Error {
+  readonly latest: ProjectStateResponse;
+  constructor(latest: ProjectStateResponse) {
+    super('Project state was modified by another client');
+    this.name = 'ProjectStateConflictError';
+    this.latest = latest;
+  }
+}
+
 let schemaReady: Promise<void> | null = null;
 
 function getSqlClient() {
@@ -55,7 +69,7 @@ export async function getProjectState(): Promise<ProjectStateResponse> {
 
   await ensureSchema(sql);
   const rows = await sql`
-    SELECT state, updated_at
+    SELECT state, date_trunc('milliseconds', updated_at) AS updated_at
     FROM project_state
     WHERE id = ${STATE_ID}
     LIMIT 1
@@ -64,10 +78,10 @@ export async function getProjectState(): Promise<ProjectStateResponse> {
   if (rows.length === 0) {
     const defaultState = createDefaultProjectState();
     const inserted = await sql`
-      INSERT INTO project_state (id, state)
-      VALUES (${STATE_ID}, ${JSON.stringify(defaultState)}::jsonb)
+      INSERT INTO project_state (id, state, updated_at)
+      VALUES (${STATE_ID}, ${JSON.stringify(defaultState)}::jsonb, date_trunc('milliseconds', now()))
       ON CONFLICT (id) DO NOTHING
-      RETURNING updated_at
+      RETURNING date_trunc('milliseconds', updated_at) AS updated_at
     `;
     return { ...defaultState, updatedAt: toIso(inserted[0]?.updated_at) };
   }
@@ -79,7 +93,8 @@ export async function getProjectState(): Promise<ProjectStateResponse> {
 }
 
 export async function saveProjectState(
-  snapshot: ProjectStateSnapshot
+  snapshot: ProjectStateSnapshot,
+  expectedUpdatedAt: string | null = null
 ): Promise<ProjectStateResponse> {
   const sql = getSqlClient();
   const normalized = normalizeProjectState(snapshot);
@@ -89,15 +104,54 @@ export async function saveProjectState(
   }
 
   await ensureSchema(sql);
-  const rows = await sql`
-    INSERT INTO project_state (id, state, updated_at)
-    VALUES (${STATE_ID}, ${JSON.stringify(normalized)}::jsonb, now())
-    ON CONFLICT (id)
-    DO UPDATE SET
-      state = EXCLUDED.state,
-      updated_at = now()
-    RETURNING updated_at
+  const stateJson = JSON.stringify(normalized);
+
+  // Sem baseline conhecido (primeiro save de um cliente legado): upsert simples.
+  if (!expectedUpdatedAt) {
+    const rows = await sql`
+      INSERT INTO project_state (id, state, updated_at)
+      VALUES (${STATE_ID}, ${stateJson}::jsonb, date_trunc('milliseconds', now()))
+      ON CONFLICT (id)
+      DO UPDATE SET
+        state = EXCLUDED.state,
+        updated_at = date_trunc('milliseconds', now())
+      RETURNING date_trunc('milliseconds', updated_at) AS updated_at
+    `;
+    return { ...normalized, updatedAt: toIso(rows[0]?.updated_at) };
+  }
+
+  // Trava otimista: só grava se o updated_at atual bater com o esperado.
+  const updated = await sql`
+    UPDATE project_state
+    SET state = ${stateJson}::jsonb, updated_at = date_trunc('milliseconds', now())
+    WHERE id = ${STATE_ID}
+      AND date_trunc('milliseconds', updated_at) = ${expectedUpdatedAt}::timestamptz
+    RETURNING date_trunc('milliseconds', updated_at) AS updated_at
+  `;
+  if (updated.length === 1) {
+    return { ...normalized, updatedAt: toIso(updated[0]?.updated_at) };
+  }
+
+  // Nada atualizado: linha inexistente (primeira escrita) ou conflito.
+  const existing = await sql`
+    SELECT state, date_trunc('milliseconds', updated_at) AS updated_at
+    FROM project_state
+    WHERE id = ${STATE_ID}
+    LIMIT 1
   `;
 
-  return { ...normalized, updatedAt: toIso(rows[0]?.updated_at) };
+  if (existing.length === 0) {
+    const inserted = await sql`
+      INSERT INTO project_state (id, state, updated_at)
+      VALUES (${STATE_ID}, ${stateJson}::jsonb, date_trunc('milliseconds', now()))
+      ON CONFLICT (id) DO NOTHING
+      RETURNING date_trunc('milliseconds', updated_at) AS updated_at
+    `;
+    return { ...normalized, updatedAt: toIso(inserted[0]?.updated_at) };
+  }
+
+  throw new ProjectStateConflictError({
+    ...normalizeProjectState(existing[0]?.state as Partial<ProjectStateSnapshot> | null),
+    updatedAt: toIso(existing[0]?.updated_at),
+  });
 }

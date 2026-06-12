@@ -16,6 +16,11 @@ export interface BercarioLote {
   peso_ganhar_kg: number;
   racao_periodo_kg: number;
   peso_total_kg: number;
+  /**
+   * Densidade em kg/m³. Apesar do sufixo `_m2`, o valor assume uma coluna
+   * d'água de 1 m (volume ≈ área), logo equivale a kg/m³ — que é como a UI
+   * exibe. Ver `densityKgM3` em `lib/feedingCalculations.ts`.
+   */
   densidade_kg_m2: number;
   peso_transferencia_kg: number;
   racao_dia_sc: number;
@@ -30,6 +35,11 @@ export interface RecriaLote {
   peso_ganhar_kg: number;
   racao_periodo_kg: number;
   peso_total_kg: number;
+  /**
+   * Densidade em kg/m³. Apesar do sufixo `_m2`, o valor assume uma coluna
+   * d'água de 1 m (volume ≈ área), logo equivale a kg/m³ — que é como a UI
+   * exibe. Ver `densityKgM3` em `lib/feedingCalculations.ts`.
+   */
   densidade_kg_m2: number;
   peso_transferencia_kg: number;
   racao_dia_sc: number;
@@ -48,6 +58,11 @@ export interface EngordaLote {
   conversao_alimentar: number;
   peso_final_kg_peixe: number;
   peso_total_kg: number;
+  /**
+   * Densidade em kg/m³. Apesar do sufixo `_m2`, o valor assume uma coluna
+   * d'água de 1 m (volume ≈ área), logo equivale a kg/m³ — que é como a UI
+   * exibe. Ver `densityKgM3` em `lib/feedingCalculations.ts`.
+   */
   densidade_kg_m2: number;
   racao_dia_sc: number;
   racao_mes_sc: number;
