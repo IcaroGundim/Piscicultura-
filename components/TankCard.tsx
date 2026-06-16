@@ -5,6 +5,7 @@ import type { Tank, TankPhase } from '@/lib/types';
 import { PHASE_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import PhaseBadge from './PhaseBadge';
+import PhaseChangeMenu from './PhaseChangeMenu';
 import { Droplets, Ruler, Fish, Scale } from 'lucide-react';
 import TankDeleteButton from './TankDeleteButton';
 import { useStore } from '@/lib/store';
@@ -19,8 +20,6 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/components/ui/popover';
-
-const PHASE_OPTIONS: TankPhase[] = ['bercario', 'recria', 'engorda', 'vazio'];
 
 interface TankCardProps extends React.HTMLAttributes<HTMLDivElement> {
   tank: Tank;
@@ -104,7 +103,7 @@ const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
         {/* Header: ID + Badge */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center">
-            <span className="inline-flex items-center justify-center rounded-lg bg-primary/20 text-[#1e3a8a] font-bold text-sm border border-primary/25 shadow-sm font-heading px-2.5 py-1">
+            <span className="inline-flex items-center justify-center rounded-lg bg-muted/30 text-foreground font-bold text-sm border border-border shadow-sm font-heading px-2.5 py-1">
               Tanque {tank.id}
             </span>
           </div>
@@ -115,28 +114,10 @@ const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
                   <button type="button" className="inline-flex cursor-pointer" />
                 }
               >
-                <PhaseBadge phase={tank.phase} size="sm" showDot />
+                <PhaseBadge phase={tank.phase} size="sm" editable />
               </PopoverTrigger>
               <PopoverContent className="w-48 p-2" side="bottom" sideOffset={6}>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-2 mb-1.5">
-                  Alterar fase
-                </p>
-                <div className="space-y-0.5">
-                  {PHASE_OPTIONS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => handlePhaseChange(p)}
-                      className={cn(
-                        'flex items-center w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-150',
-                        'hover:bg-muted/80',
-                        p === tank.phase && 'bg-muted ring-1 ring-border'
-                      )}
-                    >
-                      <PhaseBadge phase={p} size="sm" showDot />
-                    </button>
-                  ))}
-                </div>
+                <PhaseChangeMenu currentPhase={tank.phase} onSelect={handlePhaseChange} />
               </PopoverContent>
             </Popover>
           </div>

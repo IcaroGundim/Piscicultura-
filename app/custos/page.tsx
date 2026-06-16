@@ -100,16 +100,6 @@ export default function CustosPage() {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold text-foreground">Custos e Receitas</h1>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider',
-                isMensal
-                  ? 'border-sky-300 bg-sky-50 text-sky-700'
-                  : 'border-primary/30 bg-primary/10 text-primary'
-              )}
-            >
-              {isMensal ? `Mensal · ${periodTitle}` : 'Anual'}
-            </span>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             {isMensal

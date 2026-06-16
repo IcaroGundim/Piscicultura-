@@ -5,13 +5,13 @@ import type { Tank, BercarioLote, RecriaLote, EngordaLote, TankPhase } from '@/l
 import { PHASE_LABELS } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import PhaseBadge from './PhaseBadge';
+import PhaseChangeMenu from './PhaseChangeMenu';
 import { X, Pencil, Droplets, Package, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MetricFieldsList } from './MetricFieldsList';
 import { SectionTitle } from './SectionTitle';
 import {
-  PHASE_OPTIONS,
   PHASE_FIELDS,
   getLoteValue,
   type EditableMetricField,
@@ -372,29 +372,14 @@ export default function TankDetailPanel({
                   <button type="button" className="inline-flex cursor-pointer" />
                 }
               >
-                <PhaseBadge phase={tank.phase} size="md" />
+                <PhaseBadge phase={tank.phase} size="md" editable />
               </PopoverTrigger>
               <PopoverContent className="w-48 max-w-[calc(100vw-2rem)] p-2" side="bottom" align="start" sideOffset={6}>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-2 mb-1.5">
-                  Alterar fase
-                </p>
-                <div className="space-y-0.5">
-                  {PHASE_OPTIONS.map((p) => (
-                    <button
-                      key={p}
-                      ref={p === tank.phase ? firstPhaseButtonRef : undefined}
-                      type="button"
-                      onClick={() => applyPhaseChange(p)}
-                      className={cn(
-                        'flex items-center w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-150',
-                        'hover:bg-muted/80',
-                        p === tank.phase && 'bg-muted ring-1 ring-border'
-                      )}
-                    >
-                      <PhaseBadge phase={p} size="sm" showDot />
-                    </button>
-                  ))}
-                </div>
+                <PhaseChangeMenu
+                  currentPhase={tank.phase}
+                  onSelect={applyPhaseChange}
+                  firstItemRef={firstPhaseButtonRef}
+                />
               </PopoverContent>
             </Popover>
           </div>
@@ -427,14 +412,6 @@ export default function TankDetailPanel({
                 {tank.area_m2.toLocaleString('pt-BR')} m² ({tank.area_ha} ha)
                 <Pencil className="h-3 w-3 shrink-0 opacity-60" />
               </button>
-            )}
-            {tank.subfase && (
-              <>
-                <span className="hidden text-border sm:inline">•</span>
-                <span className="flex min-w-0 items-center gap-1">
-                  {tank.subfase}
-                </span>
-              </>
             )}
           </div>
         </div>

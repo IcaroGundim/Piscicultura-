@@ -74,11 +74,11 @@
 
   /* Phase colors: hex for Tailwind bg-(--phase-*)/opacity; RGB tuples for rgba(var(--phase-*-rgb), a) */
   --phase-bercario: #94ba65;
-  --phase-recria: #f3fa6b;
+  --phase-recria: #cd5c5c;
   --phase-engorda: #2563eb;
   --phase-vazio: #52525b;
   --phase-bercario-rgb: 148, 186, 101;
-  --phase-recria-rgb: 243, 250, 107;
+  --phase-recria-rgb: 205, 92, 92;
   --phase-engorda-rgb: 37, 99, 235;
   --phase-vazio-rgb: 82, 82, 91;
 

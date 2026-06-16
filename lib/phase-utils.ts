@@ -65,6 +65,32 @@ export const getPhaseDotColor = (phase: TankPhase): string => {
   }
 };
 
+export const getPhaseHoverBg = (phase: TankPhase): string => {
+  switch (phase) {
+    case 'bercario':
+      return 'hover:bg-(--phase-bercario)/16';
+    case 'recria':
+      return 'hover:bg-(--phase-recria)/08';
+    case 'engorda':
+      return 'hover:bg-(--phase-engorda)/10';
+    case 'vazio':
+      return 'hover:bg-zinc-50/90';
+  }
+};
+
+export const getPhaseTextColor = (phase: TankPhase): string => {
+  switch (phase) {
+    case 'bercario':
+      return 'text-(--phase-bercario)';
+    case 'recria':
+      return 'text-(--phase-recria)';
+    case 'engorda':
+      return 'text-(--phase-engorda)';
+    case 'vazio':
+      return 'text-zinc-500';
+  }
+};
+
 export const getPhaseBadgeClasses = (phase: TankPhase): string => {
   switch (phase) {
     case 'bercario':

@@ -13,7 +13,7 @@ import { RotateCcw } from 'lucide-react';
 
 const DEFAULT_COLORS: Record<TankPhase, string> = {
   bercario: '#94ba65',
-  recria: '#f3fa6b',
+  recria: '#cd5c5c',
   engorda: '#2563eb',
   vazio: '#52525b',
 };

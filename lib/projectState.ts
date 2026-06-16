@@ -283,6 +283,10 @@ export function normalizeProjectState(
     for (const phase of VALID_PHASES) {
       phaseColors[phase] = sanitizeColor(rawColors[phase], DEFAULT_PHASE_COLORS[phase]);
     }
+    // Migra o amarelo antigo da recria para a nova cor padrão
+    if (phaseColors.recria.toLowerCase() === '#f3fa6b') {
+      phaseColors.recria = DEFAULT_PHASE_COLORS.recria;
+    }
   }
 
   return {
