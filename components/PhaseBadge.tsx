@@ -6,10 +6,10 @@ import { PHASE_LABELS } from '@/lib/types';
 // Badges preenchidos: fundo na cor da fase + texto branco para máximo contraste.
 // O text-shadow garante legibilidade mesmo nas fases de cor mais clara (ex.: berçário).
 const phaseStyles: Record<TankPhase, string> = {
-  bercario: 'border-(--phase-bercario) bg-(--phase-bercario) text-white',
-  recria: 'border-(--phase-recria)/80 bg-(--phase-recria)/80 text-white',
-  engorda: 'border-(--phase-engorda) bg-(--phase-engorda) text-white',
-  vazio: 'border-zinc-500 bg-zinc-500 text-white',
+  bercario: 'border-white/40 bg-(--phase-bercario) text-white',
+  recria: 'border-white/40 bg-(--phase-recria)/80 text-white',
+  engorda: 'border-white/40 bg-(--phase-engorda) text-white',
+  vazio: 'border-white/40 bg-zinc-500 text-white',
 };
 
 const phaseDotStyles: Record<TankPhase, string> = {
@@ -31,7 +31,16 @@ interface PhaseBadgeProps {
   onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
 }
 
-export default function PhaseBadge({ phase, size = 'md', className, asButton, showDot = false, editable = false, onClick, onKeyDown }: PhaseBadgeProps) {
+export default function PhaseBadge({
+  phase,
+  size = 'md',
+  className,
+  asButton,
+  showDot = false,
+  editable = false,
+  onClick,
+  onKeyDown,
+}: PhaseBadgeProps) {
   const baseClasses = cn(
     'group/phase inline-flex items-center justify-center gap-1.5 rounded-full border font-semibold shadow-sm transition-all duration-200',
     '[text-shadow:0_1px_1.5px_rgba(0,0,0,0.28)]',

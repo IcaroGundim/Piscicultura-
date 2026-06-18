@@ -18,11 +18,7 @@ import {
   type FieldDef,
   type QuickEditState,
 } from '@/lib/tankFields';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/ui/popover';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 interface TankDetailPanelProps {
   tank: Tank;
@@ -69,29 +65,62 @@ export default function TankDetailPanel({
     return PHASE_FIELDS[tank.phase] ?? [];
   }, [tank.phase]);
 
-  const capacityFields = useMemo(() => fields.filter((f) => f.section === 'capacity' && !f.hidden), [fields]);
-  const feedingFields = useMemo(() => fields.filter((f) => f.section === 'feeding' && !f.hidden), [fields]);
+  const capacityFields = useMemo(
+    () => fields.filter((f) => f.section === 'capacity' && !f.hidden),
+    [fields]
+  );
+  const feedingFields = useMemo(
+    () => fields.filter((f) => f.section === 'feeding' && !f.hidden),
+    [fields]
+  );
 
   const handleInitializeLote = () => {
     if (tank.phase === 'bercario' && !bercarioLote) {
       addBercarioLote({
-        tankId: tank.id, nome: '', qtd_peixes: 0, peso_entrada_kg: 0, peso_ganhar_kg: 0,
-        racao_periodo_kg: 0, peso_total_kg: 0, densidade_kg_m2: 0,
-        peso_transferencia_kg: 0.1, racao_dia_sc: 0, racao_mes_sc: 0, racao_total_sc: 0,
+        tankId: tank.id,
+        nome: '',
+        qtd_peixes: 0,
+        peso_entrada_kg: 0,
+        peso_ganhar_kg: 0,
+        racao_periodo_kg: 0,
+        peso_total_kg: 0,
+        densidade_kg_m2: 0,
+        peso_transferencia_kg: 0.1,
+        racao_dia_sc: 0,
+        racao_mes_sc: 0,
+        racao_total_sc: 0,
       });
     } else if (tank.phase === 'recria' && !recriaLote) {
       addRecriaLote({
-        tankId: tank.id, qtd_peixes: 0, peso_entrada_kg: 0, peso_ganhar_kg: 0,
-        racao_periodo_kg: 0, peso_total_kg: 0, densidade_kg_m2: 0,
-        peso_transferencia_kg: 0.7, racao_dia_sc: 0, racao_mes_sc: 0,
-        racao_total_sc: 0, periodo_meses: 5,
+        tankId: tank.id,
+        qtd_peixes: 0,
+        peso_entrada_kg: 0,
+        peso_ganhar_kg: 0,
+        racao_periodo_kg: 0,
+        peso_total_kg: 0,
+        densidade_kg_m2: 0,
+        peso_transferencia_kg: 0.7,
+        racao_dia_sc: 0,
+        racao_mes_sc: 0,
+        racao_total_sc: 0,
+        periodo_meses: 5,
       });
     } else if (tank.phase === 'engorda' && !engordaLote) {
       addEngordaLote({
-        tankId: tank.id, modulo: '', qtd_peixes: 0, peso_entrada_kg: 0, peso_ganhar_kg: 0,
-        racao_periodo_kg: 0, conversao_alimentar: 2, peso_final_kg_peixe: 2.5,
-        peso_total_kg: 0, densidade_kg_m2: 0, racao_dia_sc: 0,
-        racao_mes_sc: 0, racao_total_sc: 0, periodo_meses: 5,
+        tankId: tank.id,
+        modulo: '',
+        qtd_peixes: 0,
+        peso_entrada_kg: 0,
+        peso_ganhar_kg: 0,
+        racao_periodo_kg: 0,
+        conversao_alimentar: 2,
+        peso_final_kg_peixe: 2.5,
+        peso_total_kg: 0,
+        densidade_kg_m2: 0,
+        racao_dia_sc: 0,
+        racao_mes_sc: 0,
+        racao_total_sc: 0,
+        periodo_meses: 5,
       });
     }
   };
@@ -112,7 +141,7 @@ export default function TankDetailPanel({
     step?: string;
     integer?: boolean;
     scale?: number;
-    }) => {
+  }) => {
     setQuickEdit({
       fieldKey,
       label,
@@ -158,7 +187,8 @@ export default function TankDetailPanel({
         patch.peso_entrada_kg = storedValue * qtdPeixes;
       } else if (quickEdit.fieldKey === 'qtd_peixes') {
         const currentQtd = getLoteValue(lote, 'qtd_peixes');
-        const currentPesoEntradaUn = currentQtd > 0 ? getLoteValue(lote, 'peso_entrada_kg') / currentQtd : 0;
+        const currentPesoEntradaUn =
+          currentQtd > 0 ? getLoteValue(lote, 'peso_entrada_kg') / currentQtd : 0;
         patch.peso_entrada_kg = currentPesoEntradaUn * storedValue;
       }
 
@@ -309,7 +339,8 @@ export default function TankDetailPanel({
     setIsPhaseTooltipOpen(false);
   };
 
-  const hasLoteActive = (tank.phase === 'bercario' && bercarioLote) ||
+  const hasLoteActive =
+    (tank.phase === 'bercario' && bercarioLote) ||
     (tank.phase === 'recria' && recriaLote) ||
     (tank.phase === 'engorda' && engordaLote);
 
@@ -360,21 +391,24 @@ export default function TankDetailPanel({
   return (
     <div className="flex max-h-[92dvh] flex-col sm:max-h-[90vh]">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3 sm:px-5 sm:py-4">
+      <div className="flex items-start justify-between gap-3 border-b border-brand/30 bg-brand px-4 py-3 sm:px-5 sm:py-4">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-            <h2 className="min-w-0 text-lg font-bold text-foreground font-heading leading-tight sm:text-xl sm:leading-none">
+            <h2 className="min-w-0 text-lg font-bold text-brand-foreground font-heading leading-tight sm:text-xl sm:leading-none">
               Tanque {tank.id.toString().padStart(2, '0')}
             </h2>
             <Popover open={isPhaseTooltipOpen} onOpenChange={setIsPhaseTooltipOpen}>
               <PopoverTrigger
-                render={
-                  <button type="button" className="inline-flex cursor-pointer" />
-                }
+                render={<button type="button" className="inline-flex cursor-pointer" />}
               >
                 <PhaseBadge phase={tank.phase} size="md" editable />
               </PopoverTrigger>
-              <PopoverContent className="w-48 max-w-[calc(100vw-2rem)] p-2" side="bottom" align="start" sideOffset={6}>
+              <PopoverContent
+                className="w-48 max-w-[calc(100vw-2rem)] p-2"
+                side="bottom"
+                align="start"
+                sideOffset={6}
+              >
                 <PhaseChangeMenu
                   currentPhase={tank.phase}
                   onSelect={applyPhaseChange}
@@ -383,10 +417,10 @@ export default function TankDetailPanel({
               </PopoverContent>
             </Popover>
           </div>
-          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:text-sm">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-brand-foreground sm:text-sm">
             {isAreaEditing ? (
-              <span className="flex min-w-0 items-center gap-1.5 rounded-md bg-background px-2 py-1 ring-1 ring-primary/25">
-                <Droplets className="w-3.5 h-3.5 shrink-0 text-primary/70" />
+              <span className="flex min-w-0 items-center gap-1.5 rounded-md bg-brand-foreground/10 px-2 py-1 ring-1 ring-brand-foreground/25">
+                <Droplets className="w-3.5 h-3.5 shrink-0 text-brand-foreground/70" />
                 <input
                   autoFocus
                   type="number"
@@ -397,7 +431,7 @@ export default function TankDetailPanel({
                   onBlur={handleAreaBlur}
                   onKeyDown={handleAreaKeyDown}
                   aria-label="Área do tanque em metros quadrados"
-                  className="w-24 bg-transparent text-xs font-medium text-foreground outline-none sm:text-sm"
+                  className="w-24 bg-transparent text-xs font-medium text-brand-foreground outline-none sm:text-sm"
                 />
                 <span>m²</span>
               </span>
@@ -405,10 +439,10 @@ export default function TankDetailPanel({
               <button
                 type="button"
                 onClick={openAreaEdit}
-                className="flex min-w-0 items-center gap-1.5 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/70 hover:text-foreground"
+                className="flex min-w-0 items-center gap-1.5 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-brand-foreground/10 hover:text-brand-foreground"
                 title="Clique para editar a área do tanque"
               >
-                <Droplets className="w-3.5 h-3.5 shrink-0 text-primary/70" />
+                <Droplets className="w-3.5 h-3.5 shrink-0 text-brand-foreground/70" />
                 {tank.area_m2.toLocaleString('pt-BR')} m² ({tank.area_ha} ha)
                 <Pencil className="h-3 w-3 shrink-0 opacity-60" />
               </button>
@@ -423,7 +457,7 @@ export default function TankDetailPanel({
               setIsPhaseTooltipOpen(false);
               onClose();
             }}
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors sm:h-8 sm:w-8"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-brand-foreground/70 hover:text-brand-foreground hover:bg-brand-foreground/10 transition-colors sm:h-8 sm:w-8"
             aria-label="Fechar drawer"
           >
             <X className="w-4 h-4" />
@@ -440,7 +474,9 @@ export default function TankDetailPanel({
             </div>
             <h3 className="mb-1.5 text-base font-semibold text-foreground">Sem lote cadastrado</h3>
             <p className="mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Fase <strong className="font-semibold text-foreground">{PHASE_LABELS[tank.phase]}</strong> definida, mas ainda sem lote para gerar as projeções.
+              Fase{' '}
+              <strong className="font-semibold text-foreground">{PHASE_LABELS[tank.phase]}</strong>{' '}
+              definida, mas ainda sem lote para gerar as projeções.
             </p>
             <Button
               onClick={handleInitializeLote}
@@ -457,7 +493,8 @@ export default function TankDetailPanel({
             </div>
             <h3 className="mb-1.5 text-base font-semibold text-foreground">Tanque vazio</h3>
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Altere a fase no topo para designar um novo lote e calcular as projeções de crescimento.
+              Altere a fase no topo para designar um novo lote e calcular as projeções de
+              crescimento.
             </p>
           </div>
         ) : (

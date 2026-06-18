@@ -12,8 +12,18 @@ import LancamentosPanel from '@/components/Custos/LancamentosPanel';
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
 const MONTH_LABELS_FULL_PAGE = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
 ];
 
 function formatUpdatedAt(iso: string | null): string {
@@ -99,7 +109,7 @@ export default function CustosPage() {
       <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold text-foreground">Custos e Receitas</h1>
+            <h1 className="text-xl font-semibold text-foreground">Custos e Receitas</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             {isMensal
@@ -116,19 +126,21 @@ export default function CustosPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-5 inline-flex rounded-lg border border-border bg-card p-1 shadow-sm">
-        {([
-          { id: 'lancamentos', label: 'Lançamentos' },
-          { id: 'config', label: 'Configurações' },
-        ] as const).map((tab) => (
+      <div className="mb-5 inline-flex rounded-lg border border-border bg-muted/40 p-1">
+        {(
+          [
+            { id: 'lancamentos', label: 'Lançamentos' },
+            { id: 'config', label: 'Configurações' },
+          ] as const
+        ).map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'rounded-md px-4 py-1.5 text-sm font-semibold transition-colors',
+              'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
               activeTab === tab.id
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-brand text-brand-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -138,10 +150,7 @@ export default function CustosPage() {
       </div>
 
       {activeTab === 'lancamentos' && (
-        <LancamentosPanel
-          lancamentos={custos.lancamentos}
-          onChange={markPendingSave}
-        />
+        <LancamentosPanel lancamentos={custos.lancamentos} onChange={markPendingSave} />
       )}
 
       {activeTab === 'config' && (

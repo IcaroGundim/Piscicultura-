@@ -5,17 +5,12 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/lib/format';
 import {
-  CATEGORIA_LANCAMENTO_COLORS,
   CATEGORIA_LANCAMENTO_LABELS,
   type CategoriaLancamento,
   type Lancamento,
   type TipoLancamento,
 } from '@/lib/types';
-import {
-  CATEGORIA_UNIDADES,
-  CATEGORIAS_CUSTO,
-  CATEGORIAS_RECEITA,
-} from '@/lib/lancamentos';
+import { CATEGORIA_UNIDADES, CATEGORIAS_CUSTO, CATEGORIAS_RECEITA } from '@/lib/lancamentos';
 import {
   Select,
   SelectContent,
@@ -25,8 +20,18 @@ import {
 } from '@/components/ui/select';
 
 const MONTH_LABELS = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
 ];
 
 interface LancamentoDialogProps {
@@ -84,8 +89,12 @@ export default function LancamentoDialog({
   const unidade = CATEGORIA_UNIDADES[categoria];
   const isReceita = effectiveTipo === 'receita';
   const titulo = initial
-    ? (isReceita ? 'Editar receita' : 'Editar lançamento')
-    : (isReceita ? 'Nova receita' : 'Novo lançamento');
+    ? isReceita
+      ? 'Editar receita'
+      : 'Editar lançamento'
+    : isReceita
+      ? 'Nova receita'
+      : 'Novo lançamento';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +117,7 @@ export default function LancamentoDialog({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl"
+        className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -126,10 +135,7 @@ export default function LancamentoDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="block">
               <span className="text-xs font-semibold text-muted-foreground">Mês</span>
-              <Select
-                value={String(mes)}
-                onValueChange={(v) => setMes(Number(v))}
-              >
+              <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
                 <SelectTrigger className="mt-1 h-10 w-full">
                   <SelectValue>
                     <span className="flex items-center gap-2">
@@ -170,31 +176,18 @@ export default function LancamentoDialog({
 
           <div className="block">
             <span className="text-xs font-semibold text-muted-foreground">Categoria</span>
-            <Select
-              value={categoria}
-              onValueChange={(v) => setCategoria(v as CategoriaLancamento)}
-            >
+            <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaLancamento)}>
               <SelectTrigger className="mt-1 h-10 w-full">
                 <SelectValue>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: CATEGORIA_LANCAMENTO_COLORS[categoria] }}
-                    />
-                    <span className="truncate">{CATEGORIA_LANCAMENTO_LABELS[categoria]}</span>
-                  </span>
+                  <span className="truncate">{CATEGORIA_LANCAMENTO_LABELS[categoria]}</span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {categoriasDisponiveis.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     <span className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: CATEGORIA_LANCAMENTO_COLORS[cat] }}
-                      />
                       <span>{CATEGORIA_LANCAMENTO_LABELS[cat]}</span>
-                      <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">
                         {CATEGORIA_UNIDADES[cat]}
                       </span>
                     </span>
@@ -249,10 +242,8 @@ export default function LancamentoDialog({
           </label>
 
           <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total
-            </span>
-            <span className="text-base font-bold tabular-nums text-foreground">
+            <span className="text-xs font-medium text-brand">Total</span>
+            <span className="text-base font-semibold tabular-nums text-foreground">
               {formatBRL(total)}
             </span>
           </div>
@@ -268,8 +259,8 @@ export default function LancamentoDialog({
             <button
               type="submit"
               className={cn(
-                'rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground',
-                'hover:bg-primary/90'
+                'rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-brand-foreground',
+                'hover:bg-brand/90'
               )}
             >
               Salvar

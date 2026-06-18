@@ -2,11 +2,7 @@
 
 import type { Tank } from '@/lib/types';
 import { useStore } from '@/lib/store';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/ui/popover';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import TankCard from './TankCard';
 import TankDetailPanel from './TankDetailPanel';
 
@@ -31,15 +27,13 @@ export default function TankDetailPopover({
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
         nativeButton={false}
-        render={
-          <TankCard tank={tank} isSelected={open} animationDelay={animationDelay} />
-        }
+        render={<TankCard tank={tank} isSelected={open} animationDelay={animationDelay} />}
       />
       <PopoverContent
         side="right"
         align="start"
         sideOffset={10}
-        className="w-[min(32rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-border bg-card p-0 shadow-2xl shadow-black/10 ring-0 backdrop-blur-none duration-150"
+        className="w-[min(32rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-t-2 border-brand bg-card p-0 shadow-2xl shadow-black/10 ring-0 backdrop-blur-none duration-150"
       >
         <TankDetailPanel
           tank={tank}

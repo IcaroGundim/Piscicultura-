@@ -15,11 +15,7 @@ import {
   getPhaseSelectedBg,
   getPhaseTopAccent,
 } from '@/lib/phase-utils';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/ui/popover';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 interface TankCardProps extends React.HTMLAttributes<HTMLDivElement> {
   tank: Tank;
@@ -27,12 +23,10 @@ interface TankCardProps extends React.HTMLAttributes<HTMLDivElement> {
   animationDelay?: number;
 }
 
-const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
-  tank,
-  isSelected,
-  animationDelay = 0,
-  ...rest
-}, ref) {
+const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard(
+  { tank, isSelected, animationDelay = 0, ...rest },
+  ref
+) {
   const [isPhasePopoverOpen, setIsPhasePopoverOpen] = useState(false);
 
   const bercarioLotes = useStore((s) => s.activeBercarioLotes);
@@ -44,10 +38,10 @@ const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
     tank.phase === 'bercario'
       ? bercarioLotes.find((l) => l.tankId === tank.id)
       : tank.phase === 'recria'
-      ? recriaLotes.find((l) => l.tankId === tank.id)
-      : tank.phase === 'engorda'
-      ? engordaLotes.find((l) => l.tankId === tank.id)
-      : undefined;
+        ? recriaLotes.find((l) => l.tankId === tank.id)
+        : tank.phase === 'engorda'
+          ? engordaLotes.find((l) => l.tankId === tank.id)
+          : undefined;
 
   const hasLote = !!lote;
 
@@ -94,7 +88,9 @@ const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
       {...rest}
     >
       {/* Faixa superior colorida */}
-      <div className={cn('absolute inset-x-0 top-0 h-1 rounded-t-2xl ', getPhaseTopAccent(tank.phase))} />
+      <div
+        className={cn('absolute inset-x-0 top-0 h-1 rounded-t-2xl ', getPhaseTopAccent(tank.phase))}
+      />
 
       {/* Delete button - only visible on hover */}
       <TankDeleteButton tankId={tank.id} />
@@ -110,9 +106,7 @@ const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
           <div onClick={(e) => e.stopPropagation()}>
             <Popover open={isPhasePopoverOpen} onOpenChange={setIsPhasePopoverOpen}>
               <PopoverTrigger
-                render={
-                  <button type="button" className="inline-flex cursor-pointer" />
-                }
+                render={<button type="button" className="inline-flex cursor-pointer" />}
               >
                 <PhaseBadge phase={tank.phase} size="sm" editable />
               </PopoverTrigger>
@@ -147,13 +141,13 @@ const TankCard = forwardRef<HTMLDivElement, TankCardProps>(function TankCard({
             {hasLote ? (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 rounded-md bg-muted/70 px-2.5 py-1">
+                  <div className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-muted/70 px-2.5 py-1">
                     <Fish className="h-3.5 w-3.5 text-primary/80" />
                     <span className="text-sm font-semibold text-foreground">
                       {(lote.qtd_peixes ?? 0).toLocaleString('pt-BR')}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-md bg-muted/70 px-2.5 py-1">
+                  <div className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-muted/70 px-2.5 py-1">
                     <Scale className="h-3.5 w-3.5 text-primary/80" />
                     <span className="text-sm font-semibold text-foreground">
                       {(lote.peso_total_kg ?? 0).toLocaleString('pt-BR')} kg

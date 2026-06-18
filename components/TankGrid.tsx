@@ -31,11 +31,16 @@ export default function TankGrid() {
   return (
     <div className="flex h-full min-h-[500px] flex-col gap-6 lg:flex-row">
       {/* Left Sidebar: List of Tanks (Max ~30% width) */}
-      <div role="region" aria-label="Lista de tanques" className="flex h-full w-full shrink-0 flex-col gap-4 lg:w-72 xl:w-80">
+      <div
+        role="region"
+        aria-label="Lista de tanques"
+        className="flex h-full w-full shrink-0 flex-col gap-4 lg:w-72 xl:w-80"
+      >
         {/* Filter tabs */}
         <div role="tablist" className="flex items-center gap-1.5 flex-wrap">
           {filterOptions.map(({ value, label }) => {
-            const count = value === 'all' ? tanks.length : tanks.filter((t) => t.phase === value).length;
+            const count =
+              value === 'all' ? tanks.length : tanks.filter((t) => t.phase === value).length;
             return (
               <button
                 key={value}
@@ -53,7 +58,9 @@ export default function TankGrid() {
                 <span
                   className={cn(
                     'rounded px-1.5 py-0.5 text-xs font-bold',
-                    filter === value ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                    filter === value
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground'
                   )}
                 >
                   {count}
@@ -78,7 +85,11 @@ export default function TankGrid() {
       </div>
 
       {/* Right Area: Expanded Details (Flex 1) */}
-      <div role="complementary" aria-label="Detalhes do tanque" className="relative flex h-[70dvh] min-w-0 flex-1 flex-col self-start overflow-hidden rounded-3xl border border-border/90 bg-card/80 shadow-xl shadow-blue-950/5 backdrop-blur-sm lg:h-[78dvh]">
+      <div
+        role="complementary"
+        aria-label="Detalhes do tanque"
+        className="relative flex h-[70dvh] min-w-0 flex-1 flex-col self-start overflow-hidden rounded-3xl border border-t-2 border-brand bg-card/80 shadow-xl shadow-blue-950/5 backdrop-blur-sm lg:h-[78dvh]"
+      >
         {selectedTank ? (
           <TankDetailPanel
             tank={selectedTank}
@@ -88,13 +99,18 @@ export default function TankGrid() {
             onClose={() => setSelectedTankId(null)}
           />
         ) : (
-          <div role="status" aria-live="polite" className="flex flex-1 animate-in flex-col items-center justify-center p-8 text-center text-muted-foreground fade-in duration-500">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex flex-1 animate-in flex-col items-center justify-center p-8 text-center text-muted-foreground fade-in duration-500"
+          >
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card shadow-sm">
               <Fish className="w-8 h-8 text-muted-foreground/40" />
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">Nenhum tanque selecionado</h3>
             <p className="text-sm text-muted-foreground max-w-[280px]">
-              Selecione um tanque na lista ao lado para visualizar os detalhes de produção, lotes e alimentação.
+              Selecione um tanque na lista ao lado para visualizar os detalhes de produção, lotes e
+              alimentação.
             </p>
           </div>
         )}
