@@ -1,4 +1,5 @@
 import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, LocationData } from './types';
+import { seedMovimentacoesFromLotes } from './movimentacoes';
 
 const initialTanksRondonia: Tank[] = [
   { id: 1,  area_m2: 1600,  area_ha: 0.16, phase: 'recria' },
@@ -174,6 +175,11 @@ export const initialLocations: Record<string, LocationData> = {
     engordaLotes: initialEngordaLotesRondonia,
     premissas: initialPremissasRondonia,
     custos: initialCustosRondonia,
+    movimentacoes: seedMovimentacoesFromLotes({
+      bercarioLotes: initialBercarioLotesRondonia,
+      recriaLotes: initialRecriaLotesRondonia,
+      engordaLotes: initialEngordaLotesRondonia,
+    }),
   },
   acre: {
     tanks: initialTanksAcre,
@@ -182,6 +188,11 @@ export const initialLocations: Record<string, LocationData> = {
     engordaLotes: initialEngordaLotesAcre,
     premissas: initialPremissasAcre,
     custos: initialCustosAcre,
+    movimentacoes: seedMovimentacoesFromLotes({
+      bercarioLotes: initialBercarioLotesAcre,
+      recriaLotes: initialRecriaLotesAcre,
+      engordaLotes: initialEngordaLotesAcre,
+    }),
   },
 };
 

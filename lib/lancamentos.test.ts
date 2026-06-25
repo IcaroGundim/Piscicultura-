@@ -10,6 +10,9 @@ import {
   receitaTotalAnual,
   totalDespesasAnuais,
   anosDisponiveis,
+  resumoMensal,
+  resumoAnual,
+  composicaoPorCategoria,
 } from './lancamentos';
 import type { Lancamento } from './types';
 
@@ -115,5 +118,73 @@ describe('anosDisponiveis', () => {
       l({ ano: 2025 }),
     ];
     expect(anosDisponiveis(lancamentos)).toEqual([2026, 2025, 2024]);
+  });
+});
+
+describe('resumoMensal', () => {
+  it('soma custo/receita por mês e calcula resultado = receita − custo', () => {
+    const lancamentos = [
+      l({ mes: 1, tipo: 'custo', categoria: 'racao', quantidade: 10, precoUnitario: 100 }), // 1000
+      l({ mes: 1, tipo: 'receita', categoria: 'venda_peixe', quantidade: 100, precoUnitario: 30 }), // 3000
+      l({ mes: 3, tipo: 'custo', categoria: 'mao_obra', quantidade: 1, precoUnitario: 500 }), // 500
+    ];
+    const serie = resumoMensal(lancamentos, 2026);
+    expect(serie).toHaveLength(12);
+    expect(serie[0]).toMatchObject({ label: 'Jan', custo: 1000, receita: 3000, resultado: 2000 });
+    expect(serie[2]).toMatchObject({ label: 'Mar', custo: 500, receita: 0, resultado: -500 });
+    expect(serie[1]).toMatchObject({ custo: 0, receita: 0, resultado: 0 });
+  });
+
+  it('ignora lançamentos de outros anos', () => {
+    const lancamentos = [
+      l({ ano: 2025, mes: 1, quantidade: 5, precoUnitario: 100 }),
+      l({ ano: 2026, mes: 1, quantidade: 2, precoUnitario: 100 }),
+    ];
+    expect(resumoMensal(lancamentos, 2026)[0].custo).toBe(200);
+  });
+});
+
+describe('resumoAnual', () => {
+  it('agrega por ano, ordenado do mais antigo ao mais recente', () => {
+    const lancamentos = [
+      l({
+        ano: 2026,
+        tipo: 'receita',
+        categoria: 'venda_peixe',
+        quantidade: 100,
+        precoUnitario: 10,
+      }), // 1000
+      l({ ano: 2024, tipo: 'custo', categoria: 'racao', quantidade: 1, precoUnitario: 300 }), // 300
+      l({ ano: 2026, tipo: 'custo', categoria: 'racao', quantidade: 1, precoUnitario: 400 }), // 400
+    ];
+    const serie = resumoAnual(lancamentos);
+    expect(serie.map((p) => p.ano)).toEqual([2024, 2026]);
+    expect(serie[0]).toMatchObject({ ano: 2024, custo: 300, receita: 0, resultado: -300 });
+    expect(serie[1]).toMatchObject({ ano: 2026, custo: 400, receita: 1000, resultado: 600 });
+  });
+});
+
+describe('composicaoPorCategoria', () => {
+  it('soma por categoria, descarta zeradas e ordena maior → menor', () => {
+    const lancamentos = [
+      l({ tipo: 'custo', categoria: 'racao', quantidade: 1, precoUnitario: 100 }),
+      l({ tipo: 'custo', categoria: 'mao_obra', quantidade: 1, precoUnitario: 500 }),
+      l({ tipo: 'receita', categoria: 'venda_peixe', quantidade: 1, precoUnitario: 9999 }),
+    ];
+    const custos = composicaoPorCategoria(lancamentos, 'custo');
+    expect(custos.map((f) => f.categoria)).toEqual(['mao_obra', 'racao']);
+    expect(custos[0]).toMatchObject({ valor: 500, label: 'Mão de obra' });
+    expect(custos.every((f) => f.valor > 0)).toBe(true);
+    expect(custos.some((f) => f.categoria === 'venda_peixe')).toBe(false);
+  });
+
+  it('filtra por ano quando informado', () => {
+    const lancamentos = [
+      l({ ano: 2025, categoria: 'racao', quantidade: 1, precoUnitario: 100 }),
+      l({ ano: 2026, categoria: 'racao', quantidade: 1, precoUnitario: 700 }),
+    ];
+    const custos2026 = composicaoPorCategoria(lancamentos, 'custo', 2026);
+    expect(custos2026).toHaveLength(1);
+    expect(custos2026[0].valor).toBe(700);
   });
 });

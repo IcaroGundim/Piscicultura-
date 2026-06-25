@@ -1,5 +1,6 @@
 import { initialLocations } from './initialData';
 import { CATEGORIAS_CUSTO, CATEGORIAS_RECEITA } from './lancamentos';
+import { seedMovimentacoesFromLotes } from './movimentacoes';
 import { PHASE_COLORS } from './types';
 import type {
   CategoriaLancamento,
@@ -8,6 +9,9 @@ import type {
   Lancamento,
   LocationData,
   LocationKey,
+  Movimentacao,
+  MovimentacaoDirecao,
+  MovimentacaoTipo,
   Premissas,
   RecriaLote,
   Tank,
@@ -22,11 +26,14 @@ const VALID_CATEGORIAS: CategoriaLancamento[] = [
 ];
 
 const VALID_PHASES: TankPhase[] = ['bercario', 'recria', 'engorda', 'vazio'];
+const VALID_MOV_TIPOS: MovimentacaoTipo[] = ['povoamento', 'venda', 'transferencia', 'ajuste'];
+const VALID_MOV_DIRECOES: MovimentacaoDirecao[] = ['entrada', 'saida'];
 
 // Limites defensivos contra payloads abusivos (DoS / inchaço do banco).
 const MAX_TANKS = 1000;
 const MAX_LOTES = 1000;
 const MAX_LANCAMENTOS = 10000;
+const MAX_MOVIMENTACOES = 20000;
 const MAX_STRING_LENGTH = 200;
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
 
@@ -65,6 +72,7 @@ export interface ProjectDerivedState {
   activeEngordaLotes: EngordaLote[];
   activePremissas: Premissas;
   activeCustos: Custos;
+  activeMovimentacoes: Movimentacao[];
 }
 
 export const DEFAULT_PHASE_COLORS: Record<TankPhase, string> = {
@@ -134,6 +142,42 @@ function normalizeCustos(custos: Partial<Custos> | undefined, fallback: Custos):
   return {
     lancamentos,
   };
+}
+
+function normalizeMovimentacao(raw: unknown): Movimentacao | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Partial<Movimentacao>;
+  if (typeof r.tankId !== 'number' || !Number.isFinite(r.tankId)) return null;
+  if (!VALID_MOV_TIPOS.includes(r.tipo as MovimentacaoTipo)) return null;
+  if (!VALID_MOV_DIRECOES.includes(r.direcao as MovimentacaoDirecao)) return null;
+  const ano = typeof r.ano === 'number' && Number.isFinite(r.ano) ? Math.floor(r.ano) : null;
+  const mes = typeof r.mes === 'number' && Number.isFinite(r.mes) ? Math.floor(r.mes) : null;
+  if (ano === null || mes === null || mes < 1 || mes > 12) return null;
+  const quantidade =
+    typeof r.quantidade === 'number' && Number.isFinite(r.quantidade)
+      ? Math.max(0, r.quantidade)
+      : 0;
+  const id = typeof r.id === 'string' && r.id.length > 0 ? r.id : generateId();
+
+  const result: Movimentacao = {
+    id,
+    tankId: Math.floor(r.tankId),
+    tipo: r.tipo as MovimentacaoTipo,
+    direcao: r.direcao as MovimentacaoDirecao,
+    quantidade,
+    ano,
+    mes,
+  };
+  if (VALID_PHASES.includes(r.faseTanque as TankPhase)) result.faseTanque = r.faseTanque as TankPhase;
+  if (typeof r.tankDestino === 'number' && Number.isFinite(r.tankDestino)) {
+    result.tankDestino = Math.floor(r.tankDestino);
+  }
+  if (VALID_PHASES.includes(r.faseDestino as TankPhase)) result.faseDestino = r.faseDestino as TankPhase;
+  if (typeof r.lancamentoId === 'string' && r.lancamentoId.length > 0) {
+    result.lancamentoId = toCleanString(r.lancamentoId);
+  }
+  if (typeof r.descricao === 'string') result.descricao = toCleanString(r.descricao);
+  return result;
 }
 
 function normalizeTank(raw: unknown): Tank | null {
@@ -245,13 +289,25 @@ function normalizeLocation(
   fallback: LocationData
 ): LocationData {
   if (!location || typeof location !== 'object') return fallback;
+  const bercarioLotes = normalizeArray(location.bercarioLotes, normalizeBercarioLote, MAX_LOTES, fallback.bercarioLotes);
+  const recriaLotes = normalizeArray(location.recriaLotes, normalizeRecriaLote, MAX_LOTES, fallback.recriaLotes);
+  const engordaLotes = normalizeArray(location.engordaLotes, normalizeEngordaLote, MAX_LOTES, fallback.engordaLotes);
+
+  // Migração: estados antigos não têm o campo `movimentacoes`. Nesse caso,
+  // semeamos um `povoamento` por lote para o saldo derivado reconciliar com
+  // o `qtd_peixes` já cadastrado. Um array presente (mesmo vazio) é respeitado.
+  const movimentacoes = Array.isArray(location.movimentacoes)
+    ? normalizeArray(location.movimentacoes, normalizeMovimentacao, MAX_MOVIMENTACOES, fallback.movimentacoes)
+    : seedMovimentacoesFromLotes({ bercarioLotes, recriaLotes, engordaLotes });
+
   return {
     tanks: normalizeArray(location.tanks, normalizeTank, MAX_TANKS, fallback.tanks),
-    bercarioLotes: normalizeArray(location.bercarioLotes, normalizeBercarioLote, MAX_LOTES, fallback.bercarioLotes),
-    recriaLotes: normalizeArray(location.recriaLotes, normalizeRecriaLote, MAX_LOTES, fallback.recriaLotes),
-    engordaLotes: normalizeArray(location.engordaLotes, normalizeEngordaLote, MAX_LOTES, fallback.engordaLotes),
+    bercarioLotes,
+    recriaLotes,
+    engordaLotes,
     premissas: normalizePremissas(location.premissas, fallback.premissas),
     custos: normalizeCustos(location.custos, fallback.custos),
+    movimentacoes,
   };
 }
 
@@ -312,6 +368,7 @@ export function buildDerivedState(
     activeEngordaLotes: location.engordaLotes,
     activePremissas: location.premissas,
     activeCustos: location.custos,
+    activeMovimentacoes: location.movimentacoes,
   };
 }
 

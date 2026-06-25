@@ -17,6 +17,7 @@ import type {
   Lancamento,
   LocationData,
   LocationKey,
+  Movimentacao,
   Premissas,
   RecriaLote,
   Tank,
@@ -27,6 +28,10 @@ import {
   calculateEngordaLote,
   calculateRecriaLote,
 } from './feedingCalculations';
+import {
+  generateMovimentacaoId,
+  saldoDoTanque,
+} from './movimentacoes';
 import {
   buildDerivedState,
   createDefaultProjectState,
@@ -46,6 +51,7 @@ interface AppState {
   activeEngordaLotes: EngordaLote[];
   activePremissas: Premissas;
   activeCustos: Custos;
+  activeMovimentacoes: Movimentacao[];
 
   setLocation: (key: LocationKey) => void;
   updateTankPhase: (tankId: number, newPhase: TankPhase, subfase?: string) => void;
@@ -54,9 +60,12 @@ interface AppState {
   updateRecriaLote: (tankId: number, data: Partial<RecriaLote>) => void;
   updateEngordaLote: (tankId: number, data: Partial<EngordaLote>) => void;
   updatePremissas: (data: Partial<Premissas>) => void;
-  addLancamento: (input: Omit<Lancamento, 'id'>) => void;
+  addLancamento: (input: Omit<Lancamento, 'id'>, vinculo?: VendaVinculo) => void;
   updateLancamento: (id: string, patch: Partial<Omit<Lancamento, 'id'>>) => void;
   removeLancamento: (id: string) => void;
+  addMovimentacao: (input: Omit<Movimentacao, 'id'>) => void;
+  removeMovimentacao: (id: string) => void;
+  transferirPeixes: (input: TransferirPeixesInput) => void;
   addBercarioLote: (lote: BercarioLote) => void;
   addRecriaLote: (lote: RecriaLote) => void;
   addEngordaLote: (lote: EngordaLote) => void;
@@ -79,6 +88,22 @@ interface AppState {
 }
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+/** Dados opcionais para vincular uma venda (Lançamento) a um tanque de origem. */
+export interface VendaVinculo {
+  tankId: number;
+  qtdPeixes: number;
+}
+
+export interface TransferirPeixesInput {
+  origemTankId: number;
+  destinoTankId: number;
+  quantidade: number;
+  faseDestino: Exclude<TankPhase, 'vazio'>;
+  ano: number;
+  mes: number;
+  descricao?: string;
+}
 
 type AppStore = StoreApi<AppState>;
 
@@ -302,17 +327,41 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
         }))
       ),
 
-    addLancamento: (input) =>
+    addLancamento: (input, vinculo) =>
       set((state) =>
-        updateLocationInState(state, (location) => ({
-          custos: {
+        updateLocationInState(state, (location) => {
+          const lancamentoId = generateLancamentoId();
+          const custos = {
             ...location.custos,
             lancamentos: [
               ...location.custos.lancamentos,
-              { ...input, id: generateLancamentoId() },
+              { ...input, id: lancamentoId },
             ],
-          },
-        }))
+          };
+
+          // Venda vinculada a um tanque: registra também a saída de peixes.
+          if (vinculo && vinculo.qtdPeixes > 0) {
+            const tank = location.tanks.find((t) => t.id === vinculo.tankId);
+            const mov: Movimentacao = {
+              id: generateMovimentacaoId(),
+              tankId: vinculo.tankId,
+              tipo: 'venda',
+              direcao: 'saida',
+              quantidade: Math.max(0, Math.round(vinculo.qtdPeixes)),
+              ano: input.ano,
+              mes: input.mes,
+              ...(tank?.phase ? { faseTanque: tank.phase } : {}),
+              lancamentoId,
+              ...(input.descricao ? { descricao: input.descricao } : {}),
+            };
+            return {
+              custos,
+              ...applyMovimentacoes({ ...location, custos }, [mov], [vinculo.tankId]),
+            };
+          }
+
+          return { custos };
+        })
       ),
 
     updateLancamento: (id, patch) =>
@@ -329,12 +378,102 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
 
     removeLancamento: (id) =>
       set((state) =>
-        updateLocationInState(state, (location) => ({
-          custos: {
+        updateLocationInState(state, (location) => {
+          const custos = {
             ...location.custos,
             lancamentos: location.custos.lancamentos.filter((l) => l.id !== id),
-          },
-        }))
+          };
+
+          // Remove também a movimentação de peixes vinculada a esta venda.
+          const linked = location.movimentacoes.filter((m) => m.lancamentoId === id);
+          if (linked.length === 0) return { custos };
+
+          const movimentacoes = location.movimentacoes.filter((m) => m.lancamentoId !== id);
+          const tankIds = linked.map((m) => m.tankId);
+          return {
+            custos,
+            movimentacoes,
+            ...recalcTanques({ ...location, movimentacoes }, tankIds),
+          };
+        })
+      ),
+
+    addMovimentacao: (input) =>
+      set((state) =>
+        updateLocationInState(state, (location) => {
+          const mov: Movimentacao = { ...input, id: generateMovimentacaoId() };
+          const tankIds = [input.tankId, ...(input.tankDestino != null ? [input.tankDestino] : [])];
+          return applyMovimentacoes(location, [mov], tankIds);
+        })
+      ),
+
+    removeMovimentacao: (id) =>
+      set((state) =>
+        updateLocationInState(state, (location) => {
+          const target = location.movimentacoes.find((m) => m.id === id);
+          if (!target) return {};
+          const movimentacoes = location.movimentacoes.filter((m) => m.id !== id);
+          const tankIds = [
+            target.tankId,
+            ...(target.tankDestino != null ? [target.tankDestino] : []),
+          ];
+          return {
+            movimentacoes,
+            ...recalcTanques({ ...location, movimentacoes }, tankIds),
+          };
+        })
+      ),
+
+    transferirPeixes: ({ origemTankId, destinoTankId, quantidade, faseDestino, ano, mes, descricao }) =>
+      set((state) =>
+        updateLocationInState(state, (location) => {
+          const qtd = Math.max(0, Math.round(quantidade));
+          if (qtd <= 0 || origemTankId === destinoTankId) return {};
+          const destinoTank = location.tanks.find((t) => t.id === destinoTankId);
+          if (!destinoTank) return {};
+          const saldoOrigem = saldoDoTanque(origemTankId, location.movimentacoes);
+          if (saldoOrigem <= 0) return {};
+          const moveQtd = Math.min(qtd, saldoOrigem);
+          const origemTank = location.tanks.find((t) => t.id === origemTankId);
+
+          // 1) coloca o tanque destino na fase de destino e garante o lote
+          const tanks = location.tanks.map((t) =>
+            t.id === destinoTankId ? { ...t, phase: faseDestino } : t
+          );
+          let working: LocationData = { ...location, tanks };
+          working = { ...working, ...ensureLoteForPhase(working, destinoTankId, faseDestino) };
+
+          // 2) saída na origem + entrada no destino
+          const saida: Movimentacao = {
+            id: generateMovimentacaoId(),
+            tankId: origemTankId,
+            tipo: 'transferencia',
+            direcao: 'saida',
+            quantidade: moveQtd,
+            ano,
+            mes,
+            ...(origemTank?.phase ? { faseTanque: origemTank.phase } : {}),
+            tankDestino: destinoTankId,
+            faseDestino,
+            ...(descricao ? { descricao } : {}),
+          };
+          const entrada: Movimentacao = {
+            id: generateMovimentacaoId(),
+            tankId: destinoTankId,
+            tipo: 'transferencia',
+            direcao: 'entrada',
+            quantidade: moveQtd,
+            ano,
+            mes,
+            faseTanque: faseDestino,
+            ...(descricao ? { descricao } : {}),
+          };
+
+          return {
+            tanks,
+            ...applyMovimentacoes(working, [saida, entrada], [origemTankId, destinoTankId]),
+          };
+        })
       ),
 
     addBercarioLote: (lote) =>
@@ -426,6 +565,135 @@ function updateLocationInState(
   return {
     locations,
     ...buildDerivedState(locations, state.activeLocation),
+  };
+}
+
+function defaultLoteForPhase(
+  tankId: number,
+  phase: Exclude<TankPhase, 'vazio'>
+): BercarioLote | RecriaLote | EngordaLote {
+  const base = {
+    tankId,
+    qtd_peixes: 0,
+    peso_entrada_kg: 0,
+    peso_ganhar_kg: 0,
+    racao_periodo_kg: 0,
+    peso_total_kg: 0,
+    densidade_kg_m2: 0,
+    racao_dia_sc: 0,
+    racao_mes_sc: 0,
+    racao_total_sc: 0,
+  };
+  if (phase === 'bercario') {
+    return { ...base, nome: '', peso_transferencia_kg: 0.1 };
+  }
+  if (phase === 'recria') {
+    return { ...base, peso_transferencia_kg: 0.7, periodo_meses: 5 };
+  }
+  return {
+    ...base,
+    modulo: '',
+    conversao_alimentar: 2,
+    peso_final_kg_peixe: 2.5,
+    periodo_meses: 5,
+  };
+}
+
+/**
+ * Garante que o tanque tenha exatamente um lote na fase informada, removendo
+ * lotes de outras fases (o histórico de peixes vive no livro de movimentações,
+ * então a contagem não se perde). Não recalcula saldo — isso fica para
+ * `recalcSaldoTanque`.
+ */
+function ensureLoteForPhase(
+  location: LocationData,
+  tankId: number,
+  phase: Exclude<TankPhase, 'vazio'>
+): Partial<LocationData> {
+  const bercarioLotes = location.bercarioLotes.filter(
+    (l) => l.tankId !== tankId || phase === 'bercario'
+  );
+  const recriaLotes = location.recriaLotes.filter(
+    (l) => l.tankId !== tankId || phase === 'recria'
+  );
+  const engordaLotes = location.engordaLotes.filter(
+    (l) => l.tankId !== tankId || phase === 'engorda'
+  );
+
+  const novo = defaultLoteForPhase(tankId, phase);
+  if (phase === 'bercario' && !bercarioLotes.some((l) => l.tankId === tankId)) {
+    bercarioLotes.push(novo as BercarioLote);
+  } else if (phase === 'recria' && !recriaLotes.some((l) => l.tankId === tankId)) {
+    recriaLotes.push(novo as RecriaLote);
+  } else if (phase === 'engorda' && !engordaLotes.some((l) => l.tankId === tankId)) {
+    engordaLotes.push(novo as EngordaLote);
+  }
+
+  return { bercarioLotes, recriaLotes, engordaLotes };
+}
+
+/**
+ * Recalcula `qtd_peixes` do lote ativo de um tanque a partir do saldo do livro
+ * de movimentações e re-roda o `calculate*Lote` correspondente. O peso de
+ * entrada (total) é escalado para preservar o peso por unidade.
+ */
+function recalcSaldoTanque(location: LocationData, tankId: number): Partial<LocationData> {
+  const saldo = saldoDoTanque(tankId, location.movimentacoes);
+  const tank = location.tanks.find((t) => t.id === tankId);
+
+  const scaleLote = <T extends { qtd_peixes: number; peso_entrada_kg: number }>(
+    lote: T
+  ): T => {
+    const prevQtd = Math.max(0, lote.qtd_peixes);
+    const pesoEntradaUn = prevQtd > 0 ? lote.peso_entrada_kg / prevQtd : 0;
+    return { ...lote, qtd_peixes: saldo, peso_entrada_kg: pesoEntradaUn * saldo };
+  };
+
+  const patch: Partial<LocationData> = {};
+  if (location.bercarioLotes.some((l) => l.tankId === tankId)) {
+    patch.bercarioLotes = location.bercarioLotes.map((l) =>
+      l.tankId === tankId ? calculateBercarioLote(scaleLote(l), tank) : l
+    );
+  }
+  if (location.recriaLotes.some((l) => l.tankId === tankId)) {
+    patch.recriaLotes = location.recriaLotes.map((l) =>
+      l.tankId === tankId ? calculateRecriaLote(scaleLote(l), tank, location.premissas) : l
+    );
+  }
+  if (location.engordaLotes.some((l) => l.tankId === tankId)) {
+    patch.engordaLotes = location.engordaLotes.map((l) =>
+      l.tankId === tankId ? calculateEngordaLote(scaleLote(l), tank, location.premissas) : l
+    );
+  }
+  return patch;
+}
+
+/** Recalcula os lotes de vários tanques a partir do livro atual de `location`. */
+function recalcTanques(location: LocationData, tankIds: number[]): Partial<LocationData> {
+  let working = location;
+  for (const tankId of Array.from(new Set(tankIds))) {
+    working = { ...working, ...recalcSaldoTanque(working, tankId) };
+  }
+  return {
+    bercarioLotes: working.bercarioLotes,
+    recriaLotes: working.recriaLotes,
+    engordaLotes: working.engordaLotes,
+  };
+}
+
+/**
+ * Anexa novas movimentações ao livro e recalcula o saldo dos tanques afetados,
+ * retornando o patch de location pronto para `updateLocationInState`.
+ */
+function applyMovimentacoes(
+  location: LocationData,
+  novas: Movimentacao[],
+  tankIds: number[]
+): Partial<LocationData> {
+  const movimentacoes = [...location.movimentacoes, ...novas];
+  return {
+    movimentacoes,
+    ...recalcTanques({ ...location, movimentacoes }, tankIds),
   };
 }
 

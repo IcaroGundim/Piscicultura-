@@ -114,6 +114,32 @@ export interface Custos {
   lancamentos: Lancamento[];
 }
 
+export type MovimentacaoTipo = 'povoamento' | 'venda' | 'transferencia' | 'ajuste';
+
+export type MovimentacaoDirecao = 'entrada' | 'saida';
+
+export interface Movimentacao {
+  id: string;
+  tankId: number; // tanque afetado por ESTA linha
+  tipo: MovimentacaoTipo;
+  direcao: MovimentacaoDirecao;
+  quantidade: number; // sempre positivo; o sinal vem de `direcao`
+  ano: number;
+  mes: number; // 1–12 (alinhado com Lancamento)
+  faseTanque?: TankPhase; // fase do tanque no momento (contexto)
+  tankDestino?: number; // p/ transferência entre tanques
+  faseDestino?: TankPhase; // fase de destino na transferência
+  lancamentoId?: string; // vínculo com a venda financeira (Lancamento.id)
+  descricao?: string;
+}
+
+export const MOVIMENTACAO_TIPO_LABELS: Record<MovimentacaoTipo, string> = {
+  povoamento: 'Povoamento',
+  venda: 'Venda',
+  transferencia: 'Transferência de fase',
+  ajuste: 'Ajuste manual',
+};
+
 export const CATEGORIA_CUSTO_LABELS: Record<CategoriaCusto, string> = {
   racao: 'Ração',
   ferramentas: 'Ferramentas e Maquinário',
@@ -177,6 +203,7 @@ export interface LocationData {
   engordaLotes: EngordaLote[];
   premissas: Premissas;
   custos: Custos;
+  movimentacoes: Movimentacao[];
 }
 
 export const LOCATION_LABELS: Record<LocationKey, string> = {

@@ -6,11 +6,14 @@ import { cn } from '@/lib/utils';
 import { formatBRL } from '@/lib/format';
 import {
   CATEGORIA_LANCAMENTO_LABELS,
+  PHASE_LABELS,
   type CategoriaLancamento,
   type Lancamento,
   type TipoLancamento,
 } from '@/lib/types';
 import { CATEGORIA_UNIDADES, CATEGORIAS_CUSTO, CATEGORIAS_RECEITA } from '@/lib/lancamentos';
+import { useStore, type VendaVinculo } from '@/lib/store';
+import { saldoDoTanque } from '@/lib/movimentacoes';
 import {
   Select,
   SelectContent,
@@ -39,7 +42,7 @@ interface LancamentoDialogProps {
   onClose: () => void;
   initial?: Lancamento | null;
   tipo?: TipoLancamento;
-  onSave: (input: Omit<Lancamento, 'id'>) => void;
+  onSave: (input: Omit<Lancamento, 'id'>, vinculo?: VendaVinculo) => void;
 }
 
 export default function LancamentoDialog({
@@ -55,6 +58,9 @@ export default function LancamentoDialog({
   const categoriaPadrao: CategoriaLancamento =
     effectiveTipo === 'receita' ? 'venda_peixe' : 'racao';
 
+  const tanks = useStore((s) => s.activeTanks);
+  const movimentacoes = useStore((s) => s.activeMovimentacoes);
+
   const now = new Date();
   const [mes, setMes] = useState<number>(now.getMonth() + 1);
   const [ano, setAno] = useState<number>(now.getFullYear());
@@ -62,6 +68,8 @@ export default function LancamentoDialog({
   const [quantidade, setQuantidade] = useState<number>(0);
   const [precoUnitario, setPrecoUnitario] = useState<number>(0);
   const [descricao, setDescricao] = useState<string>('');
+  const [tankOrigemId, setTankOrigemId] = useState<number | null>(null);
+  const [qtdPeixes, setQtdPeixes] = useState<number>(0);
 
   useEffect(() => {
     if (!open) return;
@@ -81,6 +89,8 @@ export default function LancamentoDialog({
       setPrecoUnitario(0);
       setDescricao('');
     }
+    setTankOrigemId(null);
+    setQtdPeixes(0);
   }, [open, initial, categoriaPadrao]);
 
   if (!open) return null;
@@ -88,6 +98,10 @@ export default function LancamentoDialog({
   const total = quantidade * precoUnitario;
   const unidade = CATEGORIA_UNIDADES[categoria];
   const isReceita = effectiveTipo === 'receita';
+  // Vínculo com tanque só na criação de uma venda de peixe (não na edição).
+  const podeVincularTanque = isReceita && categoria === 'venda_peixe' && !initial;
+  const saldoOrigem =
+    tankOrigemId != null ? saldoDoTanque(tankOrigemId, movimentacoes) : null;
   const titulo = initial
     ? isReceita
       ? 'Editar receita'
@@ -99,15 +113,22 @@ export default function LancamentoDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const desc = descricao.trim();
-    onSave({
-      mes,
-      ano,
-      tipo: effectiveTipo,
-      categoria,
-      quantidade,
-      precoUnitario,
-      ...(desc ? { descricao: desc } : {}),
-    });
+    const vinculo: VendaVinculo | undefined =
+      podeVincularTanque && tankOrigemId != null && qtdPeixes > 0
+        ? { tankId: tankOrigemId, qtdPeixes }
+        : undefined;
+    onSave(
+      {
+        mes,
+        ano,
+        tipo: effectiveTipo,
+        categoria,
+        quantidade,
+        precoUnitario,
+        ...(desc ? { descricao: desc } : {}),
+      },
+      vinculo
+    );
     onClose();
   };
 
@@ -225,6 +246,71 @@ export default function LancamentoDialog({
               />
             </label>
           </div>
+
+          {podeVincularTanque && (
+            <div className="rounded-md border border-emerald-600/30 bg-emerald-50/40 p-3">
+              <span className="text-xs font-semibold text-emerald-800">
+                Abater peixes de um tanque
+                <span className="ml-1 font-normal text-emerald-700/70">opcional</span>
+              </span>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <div className="block">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Tanque de origem
+                  </span>
+                  <Select
+                    value={tankOrigemId != null ? String(tankOrigemId) : 'nenhum'}
+                    onValueChange={(v) => setTankOrigemId(v === 'nenhum' ? null : Number(v))}
+                  >
+                    <SelectTrigger className="mt-1 h-9 w-full">
+                      <SelectValue>
+                        <span className="truncate">
+                          {tankOrigemId != null
+                            ? `Tanque ${tankOrigemId.toString().padStart(2, '0')}`
+                            : 'Nenhum'}
+                        </span>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">Nenhum</SelectItem>
+                      {tanks.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          Tanque {t.id.toString().padStart(2, '0')} · {PHASE_LABELS[t.phase]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="block">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Qtd. peixes abatidos
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={qtdPeixes}
+                    disabled={tankOrigemId == null}
+                    onChange={(e) =>
+                      setQtdPeixes(Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                    }
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums disabled:opacity-50"
+                  />
+                </label>
+              </div>
+              {saldoOrigem != null && (
+                <p className="mt-2 text-[11px] tabular-nums text-emerald-800/80">
+                  Saldo atual: {saldoOrigem.toLocaleString('pt-BR')} peixes
+                  {qtdPeixes > 0 && (
+                    <>
+                      {' '}
+                      → restará {Math.max(0, saldoOrigem - qtdPeixes).toLocaleString('pt-BR')}
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
 
           <label className="block">
             <span className="flex items-baseline justify-between text-xs">

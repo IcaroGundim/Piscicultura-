@@ -47,7 +47,7 @@ export const PHASE_OPTIONS: TankPhase[] = ['bercario', 'recria', 'engorda', 'vaz
 
 export const PHASE_FIELDS: Record<Exclude<TankPhase, 'vazio'>, FieldDef[]> = {
   bercario: [
-    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-[#2d4518]', step: '1', integer: true, section: 'capacity' },
+    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-[#2d4518]', step: '1', integer: true, section: 'capacity', computed: true },
     { key: 'peso_total_kg', label: 'Biomassa Total', icon: Scale, unit: 'kg', highlight: true, section: 'capacity', computed: true },
     { key: 'densidade_kg_m2', label: 'Densidade alvo', icon: Droplets, unit: 'kg/m³', section: 'capacity', computed: true },
     { key: 'peso_entrada_kg', label: 'Peso Entrada (un)', icon: Scale, unit: 'g', scale: 1000, section: 'capacity' },
@@ -60,7 +60,7 @@ export const PHASE_FIELDS: Record<Exclude<TankPhase, 'vazio'>, FieldDef[]> = {
   ],
   recria: [
     { key: 'periodo_meses', label: 'Período (meses)', icon: Clock, unit: 'meses', step: '1', integer: true, section: 'capacity', hidden: true },
-    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-(--phase-recria)', step: '1', integer: true, section: 'capacity' },
+    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-(--phase-recria)', step: '1', integer: true, section: 'capacity', computed: true },
     { key: 'peso_total_kg', label: 'Biomassa Total', icon: Scale, unit: 'kg', highlight: true, section: 'capacity', computed: true },
     { key: 'densidade_kg_m2', label: 'Densidade alvo', icon: Droplets, unit: 'kg/m³', section: 'capacity', computed: true },
     { key: 'peso_entrada_kg', label: 'Peso Entrada (un)', icon: Scale, unit: 'kg', section: 'capacity' },
@@ -73,7 +73,7 @@ export const PHASE_FIELDS: Record<Exclude<TankPhase, 'vazio'>, FieldDef[]> = {
   ],
   engorda: [
     { key: 'periodo_meses', label: 'Período (meses)', icon: Clock, unit: 'meses', step: '1', integer: true, section: 'capacity', hidden: true },
-    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-blue-800', step: '1', integer: true, section: 'capacity' },
+    { key: 'qtd_peixes', label: 'Qtd. Peixes', icon: Package, highlight: true, color: 'text-blue-800', step: '1', integer: true, section: 'capacity', computed: true },
     { key: 'peso_total_kg', label: 'Biomassa Total', icon: Scale, unit: 'kg', highlight: true, section: 'capacity', computed: true },
     { key: 'densidade_kg_m2', label: 'Densidade final', icon: Droplets, unit: 'kg/m³', section: 'capacity', computed: true },
     { key: 'peso_entrada_kg', label: 'Peso Entrada (un)', icon: Scale, unit: 'kg', section: 'capacity' },

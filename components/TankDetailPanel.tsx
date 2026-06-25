@@ -2,11 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Tank, BercarioLote, RecriaLote, EngordaLote, TankPhase } from '@/lib/types';
-import { PHASE_LABELS } from '@/lib/types';
+import { PHASE_LABELS, MOVIMENTACAO_TIPO_LABELS } from '@/lib/types';
 import { useStore } from '@/lib/store';
+import { extratoComSaldo } from '@/lib/movimentacoes';
 import PhaseBadge from './PhaseBadge';
 import PhaseChangeMenu from './PhaseChangeMenu';
-import { X, Pencil, Droplets, Package, Clock } from 'lucide-react';
+import MovimentacaoDialog from './MovimentacaoDialog';
+import {
+  X,
+  Pencil,
+  Droplets,
+  Package,
+  Clock,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MetricFieldsList } from './MetricFieldsList';
@@ -38,6 +48,7 @@ export default function TankDetailPanel({
   const [isPhaseTooltipOpen, setIsPhaseTooltipOpen] = useState(false);
   const [phaseSubfaseDraft, setPhaseSubfaseDraft] = useState(tank.subfase ?? '');
   const [quickEdit, setQuickEdit] = useState<QuickEditState | null>(null);
+  const [isMovDialogOpen, setIsMovDialogOpen] = useState(false);
   const [isAreaEditing, setIsAreaEditing] = useState(false);
   const [areaDraft, setAreaDraft] = useState(tank.area_m2.toString());
   const skipBlurCommitRef = useRef(false);
@@ -52,6 +63,13 @@ export default function TankDetailPanel({
   const addBercarioLote = useStore((s) => s.addBercarioLote);
   const addRecriaLote = useStore((s) => s.addRecriaLote);
   const addEngordaLote = useStore((s) => s.addEngordaLote);
+  const movimentacoes = useStore((s) => s.activeMovimentacoes);
+  const removeMovimentacao = useStore((s) => s.removeMovimentacao);
+
+  const extrato = useMemo(
+    () => extratoComSaldo(tank.id, movimentacoes).reverse(),
+    [tank.id, movimentacoes]
+  );
 
   const lote = useMemo(() => {
     if (tank.phase === 'bercario') return bercarioLote;
@@ -389,7 +407,7 @@ export default function TankDetailPanel({
   };
 
   return (
-    <div className="flex max-h-[92dvh] flex-col sm:max-h-[90vh]">
+    <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-brand/30 bg-brand px-4 py-3 sm:px-5 sm:py-4">
         <div className="min-w-0 flex-1">
@@ -528,9 +546,100 @@ export default function TankDetailPanel({
                 onEditKeyDown={handleInlineKeyDown}
               />
             </div>
+
+            {/* Movimentações */}
+            <div>
+              <SectionTitle
+                action={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleQuickEditSave();
+                      setIsMovDialogOpen(true);
+                    }}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground transition-colors hover:bg-brand/90"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Registrar
+                  </button>
+                }
+              >
+                Movimentações
+              </SectionTitle>
+
+              {extrato.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center text-xs text-muted-foreground">
+                  Nenhuma movimentação registrada. Use “Registrar” para povoar, ajustar ou
+                  transferir peixes.
+                </p>
+              ) : (
+                <ul className="overflow-hidden rounded-xl border border-foreground/30 divide-y divide-border/60">
+                  {extrato.map(({ mov, saldo }) => {
+                    const isSaida = mov.direcao === 'saida';
+                    return (
+                      <li
+                        key={mov.id}
+                        className="group/mov flex items-center gap-3 px-3 py-2.5 hover:bg-primary/[0.03]"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="truncate text-sm text-foreground">
+                            {MOVIMENTACAO_TIPO_LABELS[mov.tipo]}
+                            {mov.tipo === 'transferencia' && mov.tankDestino != null && (
+                              <span className="text-muted-foreground">
+                                {' '}
+                                → T{mov.tankDestino.toString().padStart(2, '0')}
+                              </span>
+                            )}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {String(mov.mes).padStart(2, '0')}/{mov.ano}
+                            {mov.descricao ? ` · ${mov.descricao}` : ''}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <span className="block text-sm font-semibold tabular-nums text-foreground">
+                            {saldo.toLocaleString('pt-BR')}
+                          </span>
+                          <span
+                            className={cn(
+                              'block text-xs tabular-nums',
+                              isSaida ? 'text-red-600/80' : 'text-emerald-600/80'
+                            )}
+                          >
+                            {isSaida ? '−' : '+'}
+                            {mov.quantidade.toLocaleString('pt-BR')}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              window.confirm('Excluir esta movimentação? O saldo será recalculado.')
+                            ) {
+                              removeMovimentacao(mov.id);
+                            }
+                          }}
+                          className="shrink-0 rounded-md p-1.5 text-muted-foreground/30 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover/mov:opacity-100"
+                          title="Excluir movimentação"
+                          aria-label="Excluir movimentação"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         )}
       </div>
+
+      <MovimentacaoDialog
+        open={isMovDialogOpen}
+        onClose={() => setIsMovDialogOpen(false)}
+        tank={tank}
+      />
     </div>
   );
 }

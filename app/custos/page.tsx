@@ -1,13 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
+import { anosDisponiveis } from '@/lib/lancamentos';
 import type { Premissas } from '@/lib/types';
 import { Check, Loader2, CloudCheck } from 'lucide-react';
 import { useProductionMetrics } from '@/lib/hooks/useProductionMetrics';
 import { cn } from '@/lib/utils';
 import ConfiguracoesPanel from '@/components/Custos/ConfiguracoesPanel';
 import LancamentosPanel from '@/components/Custos/LancamentosPanel';
+import ResumoPanel, { ResumoControls, type Granularidade } from '@/components/Custos/ResumoPanel';
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
@@ -73,7 +75,17 @@ export default function CustosPage() {
     : 'Anual';
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [activeTab, setActiveTab] = useState<'lancamentos' | 'config'>('lancamentos');
+  const [activeTab, setActiveTab] = useState<'lancamentos' | 'resumo' | 'config'>('lancamentos');
+
+  // Estado dos controles do Resumo (levantado para ficar na barra de abas).
+  const [resumoGranularidade, setResumoGranularidade] = useState<Granularidade>('mensal');
+  const [resumoAno, setResumoAno] = useState<number>(() => new Date().getFullYear());
+  const anosResumo = useMemo(() => {
+    const list = anosDisponiveis(custos.lancamentos);
+    if (list.length === 0) list.push(new Date().getFullYear());
+    return list;
+  }, [custos.lancamentos]);
+  const anoResumoEfetivo = anosResumo.includes(resumoAno) ? resumoAno : anosResumo[0];
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -126,31 +138,52 @@ export default function CustosPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-5 inline-flex rounded-lg border border-border bg-muted/40 p-1">
-        {(
-          [
-            { id: 'lancamentos', label: 'Lançamentos' },
-            { id: 'config', label: 'Configurações' },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'bg-brand text-brand-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
+          {(
+            [
+              { id: 'lancamentos', label: 'Lançamentos' },
+              { id: 'resumo', label: 'Resumo' },
+              { id: 'config', label: 'Configurações' },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+                activeTab === tab.id
+                  ? 'bg-brand text-brand-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'resumo' && (
+          <ResumoControls
+            granularidade={resumoGranularidade}
+            onGranularidadeChange={setResumoGranularidade}
+            ano={anoResumoEfetivo}
+            onAnoChange={setResumoAno}
+            anos={anosResumo}
+          />
+        )}
       </div>
 
       {activeTab === 'lancamentos' && (
         <LancamentosPanel lancamentos={custos.lancamentos} onChange={markPendingSave} />
+      )}
+
+      {activeTab === 'resumo' && (
+        <ResumoPanel
+          lancamentos={custos.lancamentos}
+          granularidade={resumoGranularidade}
+          ano={anoResumoEfetivo}
+        />
       )}
 
       {activeTab === 'config' && (

@@ -22,7 +22,7 @@ import {
   totalPorCategoriaCusto,
   totalPorCategoriaReceita,
 } from '@/lib/lancamentos';
-import { useStore } from '@/lib/store';
+import { useStore, type VendaVinculo } from '@/lib/store';
 import {
   Select,
   SelectContent,
@@ -111,11 +111,11 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
     setDialogOpen(true);
   };
 
-  const handleSave = (input: Omit<Lancamento, 'id'>) => {
+  const handleSave = (input: Omit<Lancamento, 'id'>, vinculo?: VendaVinculo) => {
     if (editing) {
       updateLancamento(editing.id, input);
     } else {
-      addLancamento(input);
+      addLancamento(input, vinculo);
     }
     onChange();
   };
