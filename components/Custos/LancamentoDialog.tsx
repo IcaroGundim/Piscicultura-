@@ -37,6 +37,41 @@ const MONTH_LABELS = [
   'Dezembro',
 ];
 
+/**
+ * Converte o texto digitado num número não-negativo, aceitando vírgula como
+ * separador decimal (padrão pt-BR). Texto vazio/ inválido vira 0 — mas o estado
+ * do input continua sendo a string crua, então o usuário pode apagar o "0" e
+ * digitar livremente (inclusive valores decimais e intermediários como "1,").
+ */
+function parseNum(value: string): number {
+  const n = Number(value.replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Mantém apenas caracteres válidos de um número: dígitos e um único separador
+ * decimal (vírgula ou ponto). Descarta letras, símbolos e separadores extras —
+ * assim os campos só aceitam valores.
+ */
+function sanitizeNumeric(value: string): string {
+  let cleaned = value.replace(/[^\d.,]/g, '');
+  const firstSep = cleaned.search(/[.,]/);
+  if (firstSep !== -1) {
+    const intPart = cleaned.slice(0, firstSep);
+    const decPart = cleaned.slice(firstSep + 1).replace(/[.,]/g, '');
+    cleaned = intPart + cleaned[firstSep] + decPart;
+  }
+  return cleaned;
+}
+
+/** Formata um peso em kg com até 1 casa decimal (sem casas para inteiros). */
+function formatKg(value: number): string {
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  });
+}
+
 interface LancamentoDialogProps {
   open: boolean;
   onClose: () => void;
@@ -60,16 +95,22 @@ export default function LancamentoDialog({
 
   const tanks = useStore((s) => s.activeTanks);
   const movimentacoes = useStore((s) => s.activeMovimentacoes);
+  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
+  const recriaLotes = useStore((s) => s.activeRecriaLotes);
+  const engordaLotes = useStore((s) => s.activeEngordaLotes);
 
   const now = new Date();
   const [mes, setMes] = useState<number>(now.getMonth() + 1);
   const [ano, setAno] = useState<number>(now.getFullYear());
   const [categoria, setCategoria] = useState<CategoriaLancamento>(categoriaPadrao);
-  const [quantidade, setQuantidade] = useState<number>(0);
-  const [precoUnitario, setPrecoUnitario] = useState<number>(0);
+  // Inputs numéricos são guardados como string (texto cru) para permitir edição
+  // livre — apagar o zero, digitar vírgula, valores intermediários. A conversão
+  // para número acontece em `parseNum` no momento do cálculo/salvamento.
+  const [quantidade, setQuantidade] = useState<string>('');
+  const [precoUnitario, setPrecoUnitario] = useState<string>('');
   const [descricao, setDescricao] = useState<string>('');
   const [tankOrigemId, setTankOrigemId] = useState<number | null>(null);
-  const [qtdPeixes, setQtdPeixes] = useState<number>(0);
+  const [pesoAbatido, setPesoAbatido] = useState<string>('');
 
   useEffect(() => {
     if (!open) return;
@@ -77,31 +118,57 @@ export default function LancamentoDialog({
       setMes(initial.mes);
       setAno(initial.ano);
       setCategoria(initial.categoria);
-      setQuantidade(initial.quantidade);
-      setPrecoUnitario(initial.precoUnitario);
+      setQuantidade(initial.quantidade ? String(initial.quantidade) : '');
+      setPrecoUnitario(initial.precoUnitario ? String(initial.precoUnitario) : '');
       setDescricao(initial.descricao ?? '');
     } else {
       const n = new Date();
       setMes(n.getMonth() + 1);
       setAno(n.getFullYear());
       setCategoria(categoriaPadrao);
-      setQuantidade(0);
-      setPrecoUnitario(0);
+      setQuantidade('');
+      setPrecoUnitario('');
       setDescricao('');
     }
     setTankOrigemId(null);
-    setQtdPeixes(0);
+    setPesoAbatido('');
   }, [open, initial, categoriaPadrao]);
 
   if (!open) return null;
 
-  const total = quantidade * precoUnitario;
+  const quantidadeNum = parseNum(quantidade);
+  const precoUnitarioNum = parseNum(precoUnitario);
+  const pesoAbatidoNum = parseNum(pesoAbatido);
+  const total = quantidadeNum * precoUnitarioNum;
   const unidade = CATEGORIA_UNIDADES[categoria];
   const isReceita = effectiveTipo === 'receita';
   // Vínculo com tanque só na criação de uma venda de peixe (não na edição).
   const podeVincularTanque = isReceita && categoria === 'venda_peixe' && !initial;
+
+  // Saldo do tanque de origem em nº de peixes (livro de movimentações) e o peso
+  // médio por peixe do lote ativo — usado para converter o peso abatido (kg)
+  // informado pelo usuário em nº de peixes para o registro da movimentação.
   const saldoOrigem =
     tankOrigemId != null ? saldoDoTanque(tankOrigemId, movimentacoes) : null;
+  const loteOrigem =
+    tankOrigemId != null
+      ? bercarioLotes.find((l) => l.tankId === tankOrigemId) ??
+        recriaLotes.find((l) => l.tankId === tankOrigemId) ??
+        engordaLotes.find((l) => l.tankId === tankOrigemId) ??
+        null
+      : null;
+  const pesoMedioOrigem =
+    loteOrigem && loteOrigem.qtd_peixes > 0
+      ? loteOrigem.peso_total_kg / loteOrigem.qtd_peixes
+      : 0;
+  // Peso total atual em estoque no tanque (kg).
+  const saldoPesoOrigem =
+    saldoOrigem != null ? saldoOrigem * pesoMedioOrigem : null;
+  // Conversão do peso abatido (kg) → nº de peixes, limitada ao saldo do tanque.
+  const qtdPeixesAbate =
+    pesoMedioOrigem > 0 && saldoOrigem != null
+      ? Math.min(saldoOrigem, Math.round(pesoAbatidoNum / pesoMedioOrigem))
+      : 0;
   const titulo = initial
     ? isReceita
       ? 'Editar receita'
@@ -114,8 +181,8 @@ export default function LancamentoDialog({
     e.preventDefault();
     const desc = descricao.trim();
     const vinculo: VendaVinculo | undefined =
-      podeVincularTanque && tankOrigemId != null && qtdPeixes > 0
-        ? { tankId: tankOrigemId, qtdPeixes }
+      podeVincularTanque && tankOrigemId != null && qtdPeixesAbate > 0
+        ? { tankId: tankOrigemId, qtdPeixes: qtdPeixesAbate }
         : undefined;
     onSave(
       {
@@ -123,8 +190,8 @@ export default function LancamentoDialog({
         ano,
         tipo: effectiveTipo,
         categoria,
-        quantidade,
-        precoUnitario,
+        quantidade: quantidadeNum,
+        precoUnitario: precoUnitarioNum,
         ...(desc ? { descricao: desc } : {}),
       },
       vinculo
@@ -224,11 +291,11 @@ export default function LancamentoDialog({
                 Quantidade ({unidade})
               </span>
               <input
-                type="number"
-                min={0}
-                step="any"
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
                 value={quantidade}
-                onChange={(e) => setQuantidade(Math.max(0, Number(e.target.value) || 0))}
+                onChange={(e) => setQuantidade(sanitizeNumeric(e.target.value))}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums"
               />
             </label>
@@ -237,21 +304,20 @@ export default function LancamentoDialog({
                 Preço unitário (R$)
               </span>
               <input
-                type="number"
-                min={0}
-                step="any"
+                type="text"
+                inputMode="decimal"
+                placeholder="0"
                 value={precoUnitario}
-                onChange={(e) => setPrecoUnitario(Math.max(0, Number(e.target.value) || 0))}
+                onChange={(e) => setPrecoUnitario(sanitizeNumeric(e.target.value))}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums"
               />
             </label>
           </div>
 
           {podeVincularTanque && (
-            <div className="rounded-md border border-emerald-600/30 bg-emerald-50/40 p-3">
-              <span className="text-xs font-semibold text-emerald-800">
+            <div className="rounded-md border border-border bg-muted/30 p-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-brand">
                 Abater peixes de um tanque
-                <span className="ml-1 font-normal text-emerald-700/70">opcional</span>
               </span>
               <div className="mt-2 grid grid-cols-2 gap-3">
                 <div className="block">
@@ -283,29 +349,44 @@ export default function LancamentoDialog({
                 </div>
                 <label className="block">
                   <span className="text-[11px] font-medium text-muted-foreground">
-                    Qtd. peixes abatidos
+                    Peso abatido (kg)
                   </span>
                   <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={qtdPeixes}
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={pesoAbatido}
                     disabled={tankOrigemId == null}
-                    onChange={(e) =>
-                      setQtdPeixes(Math.max(0, Math.floor(Number(e.target.value) || 0)))
-                    }
+                    onChange={(e) => setPesoAbatido(sanitizeNumeric(e.target.value))}
                     className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums disabled:opacity-50"
                   />
                 </label>
               </div>
               {saldoOrigem != null && (
-                <p className="mt-2 text-[11px] tabular-nums text-emerald-800/80">
-                  Saldo atual: {saldoOrigem.toLocaleString('pt-BR')} peixes
-                  {qtdPeixes > 0 && (
+                <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+                  {pesoMedioOrigem > 0 && saldoPesoOrigem != null ? (
                     <>
-                      {' '}
-                      → restará {Math.max(0, saldoOrigem - qtdPeixes).toLocaleString('pt-BR')}
+                      Saldo atual: {formatKg(saldoPesoOrigem)} kg
+                      <span className="text-muted-foreground/70">
+                        {' '}
+                        (≈ {saldoOrigem.toLocaleString('pt-BR')} peixes)
+                      </span>
+                      {pesoAbatidoNum > 0 && (
+                        <>
+                          {' '}
+                          → restará{' '}
+                          {formatKg(Math.max(0, saldoPesoOrigem - pesoAbatidoNum))} kg
+                          <span className="text-muted-foreground/70">
+                            {' '}
+                            (≈ {qtdPeixesAbate.toLocaleString('pt-BR')} peixes abatidos)
+                          </span>
+                        </>
+                      )}
                     </>
+                  ) : (
+                    <span className="text-amber-700">
+                      Tanque sem peso médio definido — abertura por peso indisponível.
+                    </span>
                   )}
                 </p>
               )}

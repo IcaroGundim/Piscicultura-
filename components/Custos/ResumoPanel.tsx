@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import type { Lancamento } from '@/lib/types';
 import { composicaoPorCategoria, resumoAnual, resumoMensal } from '@/lib/lancamentos';
 import { cn } from '@/lib/utils';
@@ -11,9 +12,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import ResultadoChart from './charts/ResultadoChart';
-import ComposicaoChart from './charts/ComposicaoChart';
-import TendenciaChart from './charts/TendenciaChart';
+
+// Charts carregam o recharts (lib pesada) sob demanda e apenas no cliente —
+// fora do bundle inicial e sem render no servidor (onde o ResponsiveContainer
+// não tem dimensões e emite avisos de width/height -1).
+const ChartSkeleton = () => (
+  <div className="min-h-[300px] w-full animate-pulse rounded-2xl border border-border bg-muted/30" />
+);
+
+const ResultadoChart = dynamic(() => import('./charts/ResultadoChart'), {
+  ssr: false,
+  loading: ChartSkeleton,
+});
+const ComposicaoChart = dynamic(() => import('./charts/ComposicaoChart'), {
+  ssr: false,
+  loading: ChartSkeleton,
+});
+const TendenciaChart = dynamic(() => import('./charts/TendenciaChart'), {
+  ssr: false,
+  loading: ChartSkeleton,
+});
 
 export type Granularidade = 'mensal' | 'anual';
 

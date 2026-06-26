@@ -596,14 +596,21 @@ export default function TankDetailPanel({
                             {mov.descricao ? ` · ${mov.descricao}` : ''}
                           </span>
                         </span>
-                        <span className="shrink-0 text-right">
-                          <span className="block text-sm font-semibold tabular-nums text-foreground">
-                            {saldo.toLocaleString('pt-BR')}
+                        <span className="flex shrink-0 flex-col items-end gap-1">
+                          <span className="text-right leading-none">
+                            <span className="block text-lg font-bold tabular-nums text-foreground">
+                              {saldo.toLocaleString('pt-BR')}
+                            </span>
+                            <span className="mt-0.5 block text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                              saldo
+                            </span>
                           </span>
                           <span
                             className={cn(
-                              'block text-xs tabular-nums',
-                              isSaida ? 'text-red-600/80' : 'text-emerald-600/80'
+                              'inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
+                              isSaida
+                                ? 'bg-red-500/10 text-red-600'
+                                : 'bg-emerald-500/10 text-emerald-600'
                             )}
                           >
                             {isSaida ? '−' : '+'}
