@@ -4,7 +4,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Waves, Database, FileText, FileSpreadsheet, Loader2, ChevronDown, MapPin, Settings, MoreVertical, DollarSign, CalendarDays } from 'lucide-react';
+import { Waves, Database, FileText, FileSpreadsheet, Loader2, ChevronDown, MapPin, Settings, MoreVertical, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { LOCATION_LABELS } from '@/lib/types';
@@ -21,26 +21,13 @@ const navItems = [
   { href: '/custos', label: 'Custos', icon: DollarSign },
 ];
 
-const MONTH_LABELS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const MONTH_LABELS_FULL = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
-
 export default function TopNav() {
   const pathname = usePathname();
   const activeLocation = useStore((s) => s.activeLocation);
   const setLocation = useStore((s) => s.setLocation);
-  const viewPeriod = useStore((s) => s.viewPeriod);
-  const setViewPeriod = useStore((s) => s.setViewPeriod);
-  const referenceMonth = useStore((s) => s.referenceMonth);
-  const referenceYear = useStore((s) => s.referenceYear);
-  const setReferenceMonth = useStore((s) => s.setReferenceMonth);
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
-  const monthPickerRef = useRef<HTMLDivElement>(null);
 
   const [locationOpen, setLocationOpen] = useState(false);
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -110,18 +97,6 @@ export default function TopNav() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [actionMenuOpen, closeActionMenu]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (monthPickerRef.current && !monthPickerRef.current.contains(e.target as Node)) {
-        setMonthPickerOpen(false);
-      }
-    }
-    if (monthPickerOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [monthPickerOpen]);
 
   const handleGenerateReport = async () => {
     setGenerating(true);
@@ -208,94 +183,6 @@ export default function TopNav() {
               );
             })}
           </nav>
-
-          {/* Perspectiva temporal */}
-          <div className="ml-3 hidden items-center gap-1.5 shrink-0 lg:flex" role="radiogroup" aria-label="Perspectiva temporal">
-            <div className="flex items-center rounded-xl border border-white/25 bg-white/10 p-0.5">
-              {(['anual', 'mensal'] as const).map((period) => {
-                const active = viewPeriod === period;
-                return (
-                  <button
-                    key={period}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setViewPeriod(period)}
-                    className={cn(
-                      'rounded-lg px-2.5 py-1.5 text-xs font-semibold capitalize transition-all cursor-pointer min-h-[32px]',
-                      active
-                        ? 'bg-white text-[#1d5e69] shadow-sm'
-                        : 'text-white/80 hover:text-white hover:bg-white/10'
-                    )}
-                  >
-                    {period}
-                  </button>
-                );
-              })}
-            </div>
-
-            {viewPeriod === 'mensal' && (
-              <div className="relative" ref={monthPickerRef}>
-                <button
-                  type="button"
-                  onClick={() => setMonthPickerOpen((v) => !v)}
-                  className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-2.5 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-all min-h-[36px] cursor-pointer"
-                  aria-label={`Mês de referência: ${MONTH_LABELS_FULL[referenceMonth]} ${referenceYear}`}
-                  aria-expanded={monthPickerOpen}
-                >
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  <span className="tabular-nums">
-                    {MONTH_LABELS_SHORT[referenceMonth]}/{referenceYear}
-                  </span>
-                  <ChevronDown className={cn('h-3 w-3 transition-transform', monthPickerOpen && 'rotate-180')} />
-                </button>
-
-                {monthPickerOpen && (
-                  <div className="absolute top-full right-0 mt-1 w-56 rounded-lg border border-white/20 bg-[#1a4f58] p-2 shadow-lg z-50">
-                    {/* Year stepper */}
-                    <div className="flex items-center justify-between px-1 pb-2 border-b border-white/10 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => setReferenceMonth(referenceYear - 1, referenceMonth)}
-                        className="rounded px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 cursor-pointer"
-                      >
-                        ◂
-                      </button>
-                      <span className="text-sm font-bold text-white tabular-nums">{referenceYear}</span>
-                      <button
-                        type="button"
-                        onClick={() => setReferenceMonth(referenceYear + 1, referenceMonth)}
-                        className="rounded px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 cursor-pointer"
-                      >
-                        ▸
-                      </button>
-                    </div>
-                    {/* Months grid */}
-                    <div className="grid grid-cols-3 gap-1">
-                      {MONTH_LABELS_SHORT.map((label, idx) => (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={() => {
-                            setReferenceMonth(referenceYear, idx);
-                            setMonthPickerOpen(false);
-                          }}
-                          className={cn(
-                            'rounded px-2 py-1.5 text-xs font-medium transition-colors cursor-pointer',
-                            referenceMonth === idx
-                              ? 'bg-white text-[#1d5e69]'
-                              : 'text-white/80 hover:bg-white/10 hover:text-white'
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
           {/* Location + Configuração (grouped) */}
           <div className="ml-3 flex items-center gap-2 shrink-0">

@@ -10,10 +10,6 @@ import PhaseFlow from './PhaseFlow';
 interface ConfiguracoesPanelProps {
   premissas: Premissas;
   custos: Custos;
-  periodFactor: number;
-  periodLabelShort: string;
-  periodTitle: string;
-  isMensal: boolean;
   onSetPremissa: <K extends keyof Premissas>(key: K, value: Premissas[K]) => void;
 }
 
@@ -22,15 +18,8 @@ const fmtBRL = (n: number) => `R$ ${Math.round(n).toLocaleString('pt-BR')}`;
 export default function ConfiguracoesPanel({
   premissas,
   custos,
-  periodFactor,
-  periodLabelShort,
-  periodTitle,
-  isMensal,
   onSetPremissa,
 }: ConfiguracoesPanelProps) {
-  const fromStored = (annual: number) => annual * periodFactor;
-  const toStored = (display: number) => (periodFactor > 0 ? display / periodFactor : display);
-
   const porCategoria = totalPorCategoriaCusto(custos.lancamentos);
   const custoTotal = CATEGORIAS_CUSTO.reduce((sum, cat) => sum + porCategoria[cat], 0);
   const pctOf = (part: number) => (custoTotal > 0 ? (part / custoTotal) * 100 : 0);
@@ -43,18 +32,16 @@ export default function ConfiguracoesPanel({
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="border-b border-brand/30 bg-brand px-5 py-3">
             <h3 className="text-base font-semibold text-brand-foreground">Premissas de produção</h3>
-            <p className="mt-0.5 text-xs text-brand-foreground/70">
-              {isMensal ? `Valores por mês — ${periodTitle}` : 'Valores anuais'}
-            </p>
+            <p className="mt-0.5 text-xs text-brand-foreground/70">Valores anuais</p>
           </div>
           <div className="px-5 py-4">
             <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
               <CompactRow
                 label="Produção"
-                value={fromStored(premissas.producao_anual)}
-                unit={`kg/${periodLabelShort}`}
+                value={premissas.producao_anual}
+                unit="kg/ano"
                 step="1000"
-                onChange={(v) => onSetPremissa('producao_anual', toStored(v))}
+                onChange={(v) => onSetPremissa('producao_anual', v)}
               />
               <CompactRow
                 label="Conversão alimentar"
@@ -106,11 +93,9 @@ export default function ConfiguracoesPanel({
           </div>
           <div className="px-5 py-4">
             <div className="mb-3 border-b border-border/60 pb-3">
-              <span className="text-xs text-muted-foreground">
-                Custo total {isMensal ? 'mensal' : 'anual'}
-              </span>
+              <span className="text-xs text-muted-foreground">Custo total anual</span>
               <p className="font-mono text-xl font-semibold tabular-nums text-brand">
-                {fmtBRL(fromStored(custoTotal))}
+                {fmtBRL(custoTotal)}
               </p>
             </div>
             <div className="space-y-2.5">
@@ -118,7 +103,7 @@ export default function ConfiguracoesPanel({
                 <CostBar
                   key={cat}
                   label={CATEGORIA_CUSTO_LABELS[cat]}
-                  value={fromStored(porCategoria[cat])}
+                  value={porCategoria[cat]}
                   pct={pctOf(porCategoria[cat])}
                   color={CATEGORIA_CUSTO_COLORS[cat]}
                 />

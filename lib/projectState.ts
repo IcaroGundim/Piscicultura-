@@ -54,15 +54,10 @@ function sanitizeColor(value: unknown, fallback: string): string {
   return typeof value === 'string' && HEX_COLOR_RE.test(value) ? value : fallback;
 }
 
-export type ViewPeriod = 'anual' | 'mensal';
-
 export interface ProjectStateSnapshot {
   activeLocation: LocationKey;
   locations: Record<LocationKey, LocationData>;
   phaseColors: Record<TankPhase, string>;
-  viewPeriod: ViewPeriod;
-  referenceMonth: number; // 0–11 (jan = 0)
-  referenceYear: number;
 }
 
 export interface ProjectDerivedState {
@@ -80,14 +75,10 @@ export const DEFAULT_PHASE_COLORS: Record<TankPhase, string> = {
 };
 
 export function createDefaultProjectState(): ProjectStateSnapshot {
-  const now = new Date();
   return {
     activeLocation: 'rondonia',
     locations: structuredClone(initialLocations) as Record<LocationKey, LocationData>,
     phaseColors: { ...DEFAULT_PHASE_COLORS },
-    viewPeriod: 'anual',
-    referenceMonth: now.getMonth(),
-    referenceYear: now.getFullYear(),
   };
 }
 
@@ -321,17 +312,8 @@ export function normalizeProjectState(
     acre: normalizeLocation(snapshot?.locations?.acre, defaults.locations.acre),
   } satisfies Record<LocationKey, LocationData>;
 
-  const viewPeriod: ViewPeriod = snapshot?.viewPeriod === 'mensal' ? 'mensal' : 'anual';
-  const rawMonth = snapshot?.referenceMonth;
-  const referenceMonth =
-    typeof rawMonth === 'number' && Number.isInteger(rawMonth) && rawMonth >= 0 && rawMonth <= 11
-      ? rawMonth
-      : defaults.referenceMonth;
-  const rawYear = snapshot?.referenceYear;
-  const referenceYear =
-    typeof rawYear === 'number' && Number.isFinite(rawYear) && rawYear >= 1900 && rawYear <= 3000
-      ? Math.floor(rawYear)
-      : defaults.referenceYear;
+  // Campos legados (viewPeriod, referenceMonth, referenceYear) são ignorados
+  // de propósito: a perspectiva temporal global foi removida após a aba Custos.
 
   const rawColors = snapshot?.phaseColors;
   const phaseColors = { ...DEFAULT_PHASE_COLORS };
@@ -349,9 +331,6 @@ export function normalizeProjectState(
     activeLocation,
     locations,
     phaseColors,
-    viewPeriod,
-    referenceMonth,
-    referenceYear,
   };
 }
 
@@ -373,10 +352,7 @@ export function buildDerivedState(
 }
 
 export function selectPersistedProjectState(
-  state: Pick<
-    ProjectStateSnapshot,
-    'activeLocation' | 'locations' | 'phaseColors' | 'viewPeriod' | 'referenceMonth' | 'referenceYear'
-  >
+  state: Pick<ProjectStateSnapshot, 'activeLocation' | 'locations' | 'phaseColors'>
 ): ProjectStateSnapshot {
   return {
     activeLocation: state.activeLocation,
@@ -385,8 +361,5 @@ export function selectPersistedProjectState(
       acre: state.locations.acre,
     },
     phaseColors: { ...state.phaseColors },
-    viewPeriod: state.viewPeriod,
-    referenceMonth: state.referenceMonth,
-    referenceYear: state.referenceYear,
   };
 }

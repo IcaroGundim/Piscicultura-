@@ -5,28 +5,12 @@ import { useStore } from '@/lib/store';
 import { anosDisponiveis } from '@/lib/lancamentos';
 import type { Premissas } from '@/lib/types';
 import { Check, Loader2, CloudCheck } from 'lucide-react';
-import { useProductionMetrics } from '@/lib/hooks/useProductionMetrics';
 import { cn } from '@/lib/utils';
 import ConfiguracoesPanel from '@/components/Custos/ConfiguracoesPanel';
 import LancamentosPanel from '@/components/Custos/LancamentosPanel';
 import ResumoPanel, { ResumoControls, type Granularidade } from '@/components/Custos/ResumoPanel';
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
-
-const MONTH_LABELS_FULL_PAGE = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
-];
 
 function formatUpdatedAt(iso: string | null): string {
   if (!iso) return 'nunca';
@@ -64,15 +48,7 @@ export default function CustosPage() {
   const premissas = useStore((s) => s.activePremissas);
   const custos = useStore((s) => s.activeCustos);
   const updatePremissas = useStore((s) => s.updatePremissas);
-  const referenceMonth = useStore((s) => s.referenceMonth);
-  const referenceYear = useStore((s) => s.referenceYear);
   const updatedAt = useStore((s) => s.updatedAt);
-  const metrics = useProductionMetrics();
-  const { isMensal, periodFactor, periodLabelShort } = metrics;
-
-  const periodTitle = isMensal
-    ? `${MONTH_LABELS_FULL_PAGE[referenceMonth]}/${referenceYear}`
-    : 'Anual';
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [activeTab, setActiveTab] = useState<'lancamentos' | 'resumo' | 'config'>('lancamentos');
@@ -124,9 +100,7 @@ export default function CustosPage() {
             <h1 className="text-xl font-semibold text-foreground">Custos e Receitas</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            {isMensal
-              ? `Valores referentes a 1 mês de operação — ${periodTitle.toLowerCase()}.`
-              : 'Valores anuais — alterações salvam automaticamente.'}
+            Lançamentos, resumo e premissas — alterações salvam automaticamente.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -190,10 +164,6 @@ export default function CustosPage() {
         <ConfiguracoesPanel
           premissas={premissas}
           custos={custos}
-          periodFactor={periodFactor}
-          periodLabelShort={periodLabelShort}
-          periodTitle={periodTitle}
-          isMensal={isMensal}
           onSetPremissa={setPremissa}
         />
       )}

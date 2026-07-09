@@ -6,11 +6,11 @@ interface SectionTitleProps {
 
 export function SectionTitle({ children, action }: SectionTitleProps) {
   return (
-    <div className="flex items-center gap-3 mb-3 mt-6 first:mt-0">
-      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">
+    <div className="mb-3 mt-6 flex items-center gap-3 first:mt-0">
+      <h3 className="whitespace-nowrap text-xs font-bold uppercase tracking-widest text-brand">
         {children}
       </h3>
-      <div className="flex-1 h-px bg-gradient-to-r from-border to-transparent" />
+      <div className="h-px flex-1 bg-gradient-to-r from-brand/40 to-transparent" />
       {action}
     </div>
   );

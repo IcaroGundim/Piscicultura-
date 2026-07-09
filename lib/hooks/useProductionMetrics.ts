@@ -16,13 +16,8 @@ export function useProductionMetrics() {
   const premissas = useStore((s) => s.activePremissas);
   const custos = useStore((s) => s.activeCustos);
   const tanks = useStore((s) => s.activeTanks);
-  const viewPeriod = useStore((s) => s.viewPeriod);
 
   return useMemo(() => {
-    const isMensal = viewPeriod === 'mensal';
-    const periodFactor = isMensal ? 1 / 12 : 1;
-    const periodLabel = isMensal ? '/mês' : '/ano';
-    const periodLabelShort = isMensal ? 'mês' : 'ano';
     const allLotes = [...bercarioLotes, ...recriaLotes, ...engordaLotes];
 
     const totalFish = allLotes.reduce((s, l) => s + l.qtd_peixes, 0);
@@ -92,19 +87,6 @@ export function useProductionMetrics() {
       margemLucro,
       isProfitable: lucro >= 0,
       premissas,
-      // Perspectiva temporal (anual ↔ mensal): valores *Display já convertidos.
-      viewPeriod,
-      isMensal,
-      periodFactor,
-      periodLabel,
-      periodLabelShort,
-      receitaDisplay: receita * periodFactor,
-      custoRacaoDisplay: custoRacao * periodFactor,
-      custoMaoObraDisplay: custoMaoObra * periodFactor,
-      outrasDespesasDisplay: outrasDespesas * periodFactor,
-      custoTotalDisplay: custoTotal * periodFactor,
-      lucroDisplay: lucro * periodFactor,
-      producaoDisplay: premissas.producao_anual * periodFactor,
     };
-  }, [bercarioLotes, recriaLotes, engordaLotes, premissas, custos, tanks, viewPeriod]);
+  }, [bercarioLotes, recriaLotes, engordaLotes, premissas, custos, tanks]);
 }

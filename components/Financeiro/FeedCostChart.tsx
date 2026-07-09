@@ -8,7 +8,6 @@ import { Calculator } from 'lucide-react';
 import { PHASE_COLORS, PHASE_LABELS } from '@/lib/types';
 import type { TankPhase } from '@/lib/types';
 import EmptyState from '@/components/EmptyState';
-import { useProductionMetrics } from '@/lib/hooks/useProductionMetrics';
 
 interface TooltipPayloadItem {
   value: number;
@@ -19,17 +18,16 @@ interface CustomTooltipProps {
   active?: boolean;
   payload?: TooltipPayloadItem[];
   label?: string;
-  periodLabel?: string;
 }
 
-function CustomTooltip({ active, payload, label, periodLabel = 'Mensal' }: CustomTooltipProps) {
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div className="rounded-xl bg-slate-900/90 text-white p-3 shadow-xl text-xs space-y-1">
       <p className="font-semibold">{label}</p>
       {payload.map((item, idx) => (
         <p key={idx} className="text-slate-200">
-          {periodLabel}: <span className="font-bold text-white">{Number(item.value).toFixed(1)} sacos</span>
+          Mensal: <span className="font-bold text-white">{Number(item.value).toFixed(1)} sacos</span>
         </p>
       ))}
     </div>
@@ -41,8 +39,6 @@ export default function FeedCostChart() {
   const recriaLotes = useStore((s) => s.activeRecriaLotes);
   const engordaLotes = useStore((s) => s.activeEngordaLotes);
   const phaseColors = useStore((s) => s.phaseColors);
-  const { isMensal, periodLabel, periodLabelShort } = useProductionMetrics();
-  const periodMultiplier = isMensal ? 1 : 12;
 
   const colorFor = (phase: TankPhase) => phaseColors[phase] ?? PHASE_COLORS[phase];
 
@@ -51,28 +47,28 @@ export default function FeedCostChart() {
       {
         phase: 'bercario',
         label: PHASE_LABELS.bercario,
-        racao_mes: bercarioLotes.reduce((s, l) => s + l.racao_mes_sc, 0) * periodMultiplier,
+        racao_mes: bercarioLotes.reduce((s, l) => s + l.racao_mes_sc, 0),
         racao_total: bercarioLotes.reduce((s, l) => s + l.racao_total_sc, 0),
         qtd_lotes: bercarioLotes.length,
       },
       {
         phase: 'recria',
         label: PHASE_LABELS.recria,
-        racao_mes: recriaLotes.reduce((s, l) => s + l.racao_mes_sc, 0) * periodMultiplier,
+        racao_mes: recriaLotes.reduce((s, l) => s + l.racao_mes_sc, 0),
         racao_total: recriaLotes.reduce((s, l) => s + l.racao_total_sc, 0),
         qtd_lotes: recriaLotes.length,
       },
       {
         phase: 'engorda',
         label: PHASE_LABELS.engorda,
-        racao_mes: engordaLotes.reduce((s, l) => s + l.racao_mes_sc, 0) * periodMultiplier,
+        racao_mes: engordaLotes.reduce((s, l) => s + l.racao_mes_sc, 0),
         racao_total: engordaLotes.reduce((s, l) => s + l.racao_total_sc, 0),
         qtd_lotes: engordaLotes.length,
       },
     ];
     const total = data.reduce((s, p) => s + p.racao_mes, 0);
     return { feedByPhase: data, totalRacaoMes: total };
-  }, [bercarioLotes, recriaLotes, engordaLotes, periodMultiplier]);
+  }, [bercarioLotes, recriaLotes, engordaLotes]);
 
   if (feedByPhase.every((p) => p.racao_mes === 0)) {
     return (
@@ -95,7 +91,7 @@ export default function FeedCostChart() {
             Consumo de Ração por Fase
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Total: {totalRacaoMes.toFixed(1)} sacos{periodLabel}
+            Total: {totalRacaoMes.toFixed(1)} sacos/mês
           </p>
         </div>
       </div>
@@ -116,8 +112,8 @@ export default function FeedCostChart() {
               tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
               tickFormatter={(v) => `${v} sc`}
             />
-            <Tooltip content={<CustomTooltip periodLabel={isMensal ? 'Mensal' : 'Anual'} />} />
-            <Bar dataKey="racao_mes" name={isMensal ? 'Mensal' : 'Anual'} radius={[8, 8, 0, 0]} maxBarSize={60} animationBegin={200} animationDuration={800}>
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="racao_mes" name="Mensal" radius={[8, 8, 0, 0]} maxBarSize={60} animationBegin={200} animationDuration={800}>
               {feedByPhase.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={colorFor(entry.phase as TankPhase)} />
               ))}
@@ -167,7 +163,7 @@ export default function FeedCostChart() {
                 <span className="text-xl font-bold tabular-nums text-foreground leading-none sm:text-lg">
                   {phase.racao_mes.toFixed(2)}
                 </span>
-                <span className="text-[10px] font-medium text-muted-foreground">sc/{periodLabelShort}</span>
+                <span className="text-[10px] font-medium text-muted-foreground">sc/mês</span>
               </div>
 
               <div className="relative mt-1.5 flex min-w-0 items-center justify-between gap-2 text-[10px] text-muted-foreground">

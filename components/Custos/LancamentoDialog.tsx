@@ -64,12 +64,9 @@ function sanitizeNumeric(value: string): string {
   return cleaned;
 }
 
-/** Formata um peso em kg com até 1 casa decimal (sem casas para inteiros). */
-function formatKg(value: number): string {
-  return value.toLocaleString('pt-BR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  });
+/** Mantém apenas dígitos (quantidade inteira de peixes). */
+function sanitizeInteger(value: string): string {
+  return value.replace(/\D/g, '');
 }
 
 interface LancamentoDialogProps {
@@ -95,9 +92,6 @@ export default function LancamentoDialog({
 
   const tanks = useStore((s) => s.activeTanks);
   const movimentacoes = useStore((s) => s.activeMovimentacoes);
-  const bercarioLotes = useStore((s) => s.activeBercarioLotes);
-  const recriaLotes = useStore((s) => s.activeRecriaLotes);
-  const engordaLotes = useStore((s) => s.activeEngordaLotes);
 
   const now = new Date();
   const [mes, setMes] = useState<number>(now.getMonth() + 1);
@@ -110,7 +104,7 @@ export default function LancamentoDialog({
   const [precoUnitario, setPrecoUnitario] = useState<string>('');
   const [descricao, setDescricao] = useState<string>('');
   const [tankOrigemId, setTankOrigemId] = useState<number | null>(null);
-  const [pesoAbatido, setPesoAbatido] = useState<string>('');
+  const [qtdPeixes, setQtdPeixes] = useState<string>('');
 
   useEffect(() => {
     if (!open) return;
@@ -131,44 +125,26 @@ export default function LancamentoDialog({
       setDescricao('');
     }
     setTankOrigemId(null);
-    setPesoAbatido('');
+    setQtdPeixes('');
   }, [open, initial, categoriaPadrao]);
 
   if (!open) return null;
 
   const quantidadeNum = parseNum(quantidade);
   const precoUnitarioNum = parseNum(precoUnitario);
-  const pesoAbatidoNum = parseNum(pesoAbatido);
+  const qtdPeixesNum = Math.max(0, Math.floor(parseNum(qtdPeixes)));
   const total = quantidadeNum * precoUnitarioNum;
   const unidade = CATEGORIA_UNIDADES[categoria];
   const isReceita = effectiveTipo === 'receita';
   // Vínculo com tanque só na criação de uma venda de peixe (não na edição).
   const podeVincularTanque = isReceita && categoria === 'venda_peixe' && !initial;
 
-  // Saldo do tanque de origem em nº de peixes (livro de movimentações) e o peso
-  // médio por peixe do lote ativo — usado para converter o peso abatido (kg)
-  // informado pelo usuário em nº de peixes para o registro da movimentação.
+  // Saldo do tanque de origem em nº de peixes (livro de movimentações).
   const saldoOrigem =
     tankOrigemId != null ? saldoDoTanque(tankOrigemId, movimentacoes) : null;
-  const loteOrigem =
-    tankOrigemId != null
-      ? bercarioLotes.find((l) => l.tankId === tankOrigemId) ??
-        recriaLotes.find((l) => l.tankId === tankOrigemId) ??
-        engordaLotes.find((l) => l.tankId === tankOrigemId) ??
-        null
-      : null;
-  const pesoMedioOrigem =
-    loteOrigem && loteOrigem.qtd_peixes > 0
-      ? loteOrigem.peso_total_kg / loteOrigem.qtd_peixes
-      : 0;
-  // Peso total atual em estoque no tanque (kg).
-  const saldoPesoOrigem =
-    saldoOrigem != null ? saldoOrigem * pesoMedioOrigem : null;
-  // Conversão do peso abatido (kg) → nº de peixes, limitada ao saldo do tanque.
+  // Quantidade abatida limitada ao saldo unitário do tanque.
   const qtdPeixesAbate =
-    pesoMedioOrigem > 0 && saldoOrigem != null
-      ? Math.min(saldoOrigem, Math.round(pesoAbatidoNum / pesoMedioOrigem))
-      : 0;
+    saldoOrigem != null ? Math.min(saldoOrigem, qtdPeixesNum) : qtdPeixesNum;
   const titulo = initial
     ? isReceita
       ? 'Editar receita'
@@ -349,44 +325,28 @@ export default function LancamentoDialog({
                 </div>
                 <label className="block">
                   <span className="text-[11px] font-medium text-muted-foreground">
-                    Peso abatido (kg)
+                    Qtd. peixes abatidos
                   </span>
                   <input
                     type="text"
-                    inputMode="decimal"
+                    inputMode="numeric"
                     placeholder="0"
-                    value={pesoAbatido}
+                    value={qtdPeixes}
                     disabled={tankOrigemId == null}
-                    onChange={(e) => setPesoAbatido(sanitizeNumeric(e.target.value))}
+                    onChange={(e) => setQtdPeixes(sanitizeInteger(e.target.value))}
                     className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums disabled:opacity-50"
                   />
                 </label>
               </div>
               {saldoOrigem != null && (
                 <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
-                  {pesoMedioOrigem > 0 && saldoPesoOrigem != null ? (
+                  Saldo atual: {saldoOrigem.toLocaleString('pt-BR')} peixes
+                  {qtdPeixesNum > 0 && (
                     <>
-                      Saldo atual: {formatKg(saldoPesoOrigem)} kg
-                      <span className="text-muted-foreground/70">
-                        {' '}
-                        (≈ {saldoOrigem.toLocaleString('pt-BR')} peixes)
-                      </span>
-                      {pesoAbatidoNum > 0 && (
-                        <>
-                          {' '}
-                          → restará{' '}
-                          {formatKg(Math.max(0, saldoPesoOrigem - pesoAbatidoNum))} kg
-                          <span className="text-muted-foreground/70">
-                            {' '}
-                            (≈ {qtdPeixesAbate.toLocaleString('pt-BR')} peixes abatidos)
-                          </span>
-                        </>
-                      )}
+                      {' '}
+                      → restará{' '}
+                      {Math.max(0, saldoOrigem - qtdPeixesAbate).toLocaleString('pt-BR')}
                     </>
-                  ) : (
-                    <span className="text-amber-700">
-                      Tanque sem peso médio definido — abertura por peso indisponível.
-                    </span>
                   )}
                 </p>
               )}

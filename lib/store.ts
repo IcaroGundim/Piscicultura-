@@ -38,7 +38,6 @@ import {
   normalizeProjectState,
   selectPersistedProjectState,
   type ProjectStateSnapshot,
-  type ViewPeriod,
 } from './projectState';
 
 interface AppState {
@@ -76,13 +75,8 @@ interface AppState {
   phaseColors: Record<TankPhase, string>;
   setPhaseColor: (phase: TankPhase, color: string) => void;
 
-  viewPeriod: ViewPeriod;
-  referenceMonth: number;
-  referenceYear: number;
   updatedAt: string | null;
   saveStatus: SaveStatus;
-  setViewPeriod: (period: ViewPeriod) => void;
-  setReferenceMonth: (year: number, month: number) => void;
   setUpdatedAt: (iso: string | null) => void;
   setSaveStatus: (status: SaveStatus) => void;
 }
@@ -138,14 +132,8 @@ function createProjectStore(initialState: ProjectStateSnapshot): AppStore {
     ...buildDerivedState(initialState.locations, initialState.activeLocation),
     phaseColors: { ...initialState.phaseColors },
 
-    viewPeriod: initialState.viewPeriod,
-    referenceMonth: initialState.referenceMonth,
-    referenceYear: initialState.referenceYear,
     updatedAt: null,
     saveStatus: 'idle',
-    setViewPeriod: (period) => set({ viewPeriod: period }),
-    setReferenceMonth: (year, month) =>
-      set({ referenceYear: year, referenceMonth: Math.max(0, Math.min(11, month)) }),
     setUpdatedAt: (iso) => set({ updatedAt: iso }),
     setSaveStatus: (status) => set({ saveStatus: status }),
 

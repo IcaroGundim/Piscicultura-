@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createDefaultProjectState,
   normalizeProjectState,
+  DEFAULT_PHASE_COLORS,
 } from './projectState';
-import { DEFAULT_PHASE_COLORS } from './projectState';
 
 describe('normalizeProjectState — defaults e saneamento', () => {
   it('retorna o estado padrão para entrada vazia', () => {
     const state = normalizeProjectState({});
     expect(state.activeLocation).toBe('rondonia');
-    expect(state.viewPeriod).toBe('anual');
     expect(state.locations.rondonia).toBeDefined();
     expect(state.locations.acre).toBeDefined();
     expect(state.phaseColors).toEqual(DEFAULT_PHASE_COLORS);
@@ -38,16 +36,17 @@ describe('normalizeProjectState — defaults e saneamento', () => {
     expect(state.phaseColors.vazio).toBe('#123456');
   });
 
-  it('limita referenceMonth (0–11) e referenceYear (1900–3000)', () => {
-    const defaults = createDefaultProjectState();
-    expect(normalizeProjectState({ referenceMonth: 5 }).referenceMonth).toBe(5);
-    expect(normalizeProjectState({ referenceMonth: 99 }).referenceMonth).toBe(
-      defaults.referenceMonth
-    );
-    expect(normalizeProjectState({ referenceYear: 2030 }).referenceYear).toBe(2030);
-    expect(normalizeProjectState({ referenceYear: 999 }).referenceYear).toBe(
-      defaults.referenceYear
-    );
+  it('ignora campos legados de perspectiva temporal sem quebrar o load', () => {
+    const state = normalizeProjectState({
+      viewPeriod: 'mensal',
+      referenceMonth: 5,
+      referenceYear: 2030,
+    } as never);
+    expect(state.activeLocation).toBe('rondonia');
+    expect(state.locations.rondonia).toBeDefined();
+    expect(state).not.toHaveProperty('viewPeriod');
+    expect(state).not.toHaveProperty('referenceMonth');
+    expect(state).not.toHaveProperty('referenceYear');
   });
 });
 

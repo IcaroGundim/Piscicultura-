@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Tank, BercarioLote, RecriaLote, EngordaLote, TankPhase } from '@/lib/types';
-import { PHASE_LABELS, MOVIMENTACAO_TIPO_LABELS } from '@/lib/types';
+import { PHASE_LABELS } from '@/lib/types';
 import { useStore } from '@/lib/store';
-import { extratoComSaldo } from '@/lib/movimentacoes';
+import { saldoDoTanque } from '@/lib/movimentacoes';
 import PhaseBadge from './PhaseBadge';
 import PhaseChangeMenu from './PhaseChangeMenu';
-import MovimentacaoDialog from './MovimentacaoDialog';
 import {
   X,
   Pencil,
@@ -15,10 +14,10 @@ import {
   Package,
   Clock,
   Plus,
-  Trash2,
+  Fish,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { MetricFieldsList } from './MetricFieldsList';
 import { SectionTitle } from './SectionTitle';
 import {
@@ -29,6 +28,28 @@ import {
   type QuickEditState,
 } from '@/lib/tankFields';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const MONTH_LABELS = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
 
 interface TankDetailPanelProps {
   tank: Tank;
@@ -45,12 +66,16 @@ export default function TankDetailPanel({
   engordaLote,
   onClose,
 }: TankDetailPanelProps) {
+  const now = new Date();
   const [isPhaseTooltipOpen, setIsPhaseTooltipOpen] = useState(false);
   const [phaseSubfaseDraft, setPhaseSubfaseDraft] = useState(tank.subfase ?? '');
   const [quickEdit, setQuickEdit] = useState<QuickEditState | null>(null);
-  const [isMovDialogOpen, setIsMovDialogOpen] = useState(false);
   const [isAreaEditing, setIsAreaEditing] = useState(false);
   const [areaDraft, setAreaDraft] = useState(tank.area_m2.toString());
+  const [inclusaoQtd, setInclusaoQtd] = useState('');
+  const [inclusaoMes, setInclusaoMes] = useState(now.getMonth() + 1);
+  const [inclusaoAno, setInclusaoAno] = useState(now.getFullYear());
+  const [origemTankId, setOrigemTankId] = useState<number | null>(null);
   const skipBlurCommitRef = useRef(false);
   const skipAreaBlurCommitRef = useRef(false);
   const firstPhaseButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -60,16 +85,44 @@ export default function TankDetailPanel({
   const updateBercarioLote = useStore((s) => s.updateBercarioLote);
   const updateRecriaLote = useStore((s) => s.updateRecriaLote);
   const updateEngordaLote = useStore((s) => s.updateEngordaLote);
+  const addMovimentacao = useStore((s) => s.addMovimentacao);
+  const transferirPeixes = useStore((s) => s.transferirPeixes);
   const addBercarioLote = useStore((s) => s.addBercarioLote);
   const addRecriaLote = useStore((s) => s.addRecriaLote);
   const addEngordaLote = useStore((s) => s.addEngordaLote);
+  const allTanks = useStore((s) => s.activeTanks);
   const movimentacoes = useStore((s) => s.activeMovimentacoes);
-  const removeMovimentacao = useStore((s) => s.removeMovimentacao);
 
-  const extrato = useMemo(
-    () => extratoComSaldo(tank.id, movimentacoes).reverse(),
+  const saldoAtual = useMemo(
+    () => saldoDoTanque(tank.id, movimentacoes),
     [tank.id, movimentacoes]
   );
+
+  /** Fase de origem típica no fluxo: berçário → recria → engorda. */
+  const origemPhase: Exclude<TankPhase, 'vazio'> | null =
+    tank.phase === 'recria' ? 'bercario' : tank.phase === 'engorda' ? 'recria' : null;
+  const isTransferPhase = origemPhase != null;
+
+  const tanquesOrigem = useMemo(() => {
+    if (!origemPhase) return [];
+    return allTanks.filter((t) => t.phase === origemPhase && t.id !== tank.id);
+  }, [allTanks, origemPhase, tank.id]);
+
+  const saldoOrigem = useMemo(
+    () => (origemTankId != null ? saldoDoTanque(origemTankId, movimentacoes) : null),
+    [origemTankId, movimentacoes]
+  );
+
+  useEffect(() => {
+    if (!isTransferPhase) {
+      setOrigemTankId(null);
+      return;
+    }
+    setOrigemTankId((prev) => {
+      if (prev != null && tanquesOrigem.some((t) => t.id === prev)) return prev;
+      return tanquesOrigem[0]?.id ?? null;
+    });
+  }, [isTransferPhase, tanquesOrigem, tank.id]);
 
   const lote = useMemo(() => {
     if (tank.phase === 'bercario') return bercarioLote;
@@ -83,8 +136,9 @@ export default function TankDetailPanel({
     return PHASE_FIELDS[tank.phase] ?? [];
   }, [tank.phase]);
 
+  // Saldo unitário fica no formulário de inclusão; omitir da lista de métricas.
   const capacityFields = useMemo(
-    () => fields.filter((f) => f.section === 'capacity' && !f.hidden),
+    () => fields.filter((f) => f.section === 'capacity' && !f.hidden && f.key !== 'qtd_peixes'),
     [fields]
   );
   const feedingFields = useMemo(
@@ -203,11 +257,6 @@ export default function TankDetailPanel({
       if (quickEdit.fieldKey === 'peso_entrada_kg') {
         const qtdPeixes = getLoteValue(lote, 'qtd_peixes');
         patch.peso_entrada_kg = storedValue * qtdPeixes;
-      } else if (quickEdit.fieldKey === 'qtd_peixes') {
-        const currentQtd = getLoteValue(lote, 'qtd_peixes');
-        const currentPesoEntradaUn =
-          currentQtd > 0 ? getLoteValue(lote, 'peso_entrada_kg') / currentQtd : 0;
-        patch.peso_entrada_kg = currentPesoEntradaUn * storedValue;
       }
 
       updateBercarioLote(tank.id, patch);
@@ -362,13 +411,63 @@ export default function TankDetailPanel({
     (tank.phase === 'recria' && recriaLote) ||
     (tank.phase === 'engorda' && engordaLote);
 
+  const movimentoLabel =
+    tank.phase === 'bercario'
+      ? 'Incluir alevinos'
+      : tank.phase === 'recria'
+        ? 'Transferir do berçário'
+        : tank.phase === 'engorda'
+          ? 'Transferir da recria'
+          : 'Movimentar';
+  const inclusaoQtdNum = Math.max(0, Math.floor(Number(inclusaoQtd.replace(/\D/g, '')) || 0));
+  const dataValida =
+    inclusaoMes >= 1 && inclusaoMes <= 12 && inclusaoAno >= 1900 && inclusaoAno <= 3000;
+  const podePovoar = !isTransferPhase && inclusaoQtdNum > 0 && dataValida;
+  const podeTransferir =
+    isTransferPhase &&
+    origemTankId != null &&
+    inclusaoQtdNum > 0 &&
+    dataValida &&
+    saldoOrigem != null &&
+    saldoOrigem > 0 &&
+    inclusaoQtdNum <= saldoOrigem;
+  const podeSubmeter = isTransferPhase ? podeTransferir : podePovoar;
+
+  const handleMovimentarPeixes = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!podeSubmeter || tank.phase === 'vazio') return;
+    handleQuickEditSave();
+
+    if (isTransferPhase && origemTankId != null) {
+      transferirPeixes({
+        origemTankId,
+        destinoTankId: tank.id,
+        quantidade: inclusaoQtdNum,
+        faseDestino: tank.phase,
+        ano: inclusaoAno,
+        mes: inclusaoMes,
+      });
+    } else {
+      addMovimentacao({
+        tankId: tank.id,
+        tipo: 'povoamento',
+        direcao: 'entrada',
+        quantidade: inclusaoQtdNum,
+        ano: inclusaoAno,
+        mes: inclusaoMes,
+        faseTanque: tank.phase,
+      });
+    }
+    setInclusaoQtd('');
+  };
+
   const renderPeriodoEdit = () => {
     if (tank.phase === 'bercario' || !lote) return null;
     const meses = getLoteValue(lote, 'periodo_meses');
     if (quickEdit?.fieldKey === 'periodo_meses') {
       return (
-        <div className="flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          <Clock className="w-3.5 h-3.5 text-primary/70" />
+        <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-brand/30 bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground shadow-sm ring-2 ring-brand/25">
+          <Clock className="h-3.5 w-3.5 text-brand-foreground/80" />
           <input
             autoFocus
             type="number"
@@ -378,16 +477,16 @@ export default function TankDetailPanel({
             onBlur={handleInlineBlur}
             onKeyDown={handleInlineKeyDown}
             aria-label="Período em meses"
-            className="w-12 bg-transparent text-xs font-medium text-foreground outline-none"
+            className="w-10 bg-transparent text-xs font-semibold tabular-nums text-brand-foreground outline-none"
           />
-          meses
+          <span className="text-brand-foreground/80">meses</span>
         </div>
       );
     }
     return (
       <button
         type="button"
-        className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/80 transition-colors"
+        className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-brand/30 bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground shadow-sm transition-colors hover:bg-brand/90"
         title="Clique para editar período"
         onClick={() =>
           openQuickEdit({
@@ -400,7 +499,7 @@ export default function TankDetailPanel({
           })
         }
       >
-        <Clock className="w-3.5 h-3.5 text-primary/70" />
+        <Clock className="h-3.5 w-3.5 text-brand-foreground/80" />
         {meses} meses
       </button>
     );
@@ -520,6 +619,169 @@ export default function TankDetailPanel({
             {/* Capacidade & Produção */}
             <div>
               <SectionTitle action={renderPeriodoEdit()}>Capacidade &amp; Produção</SectionTitle>
+
+              <form
+                onSubmit={handleMovimentarPeixes}
+                className="mb-3 overflow-hidden rounded-xl border border-brand/30 bg-card shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-brand/30 bg-brand px-3 py-2.5 sm:px-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-foreground">
+                    {movimentoLabel}
+                  </p>
+                  <div className="flex items-center gap-1.5 rounded-lg border border-white/80 bg-white px-2.5 py-1 shadow-sm">
+                    <Fish className="h-3.5 w-3.5 text-brand" />
+                    <span className="text-sm font-bold tabular-nums text-brand">
+                      {saldoAtual.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-brand/70">
+                      saldo
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2 bg-card p-3 sm:p-4">
+                  {isTransferPhase && (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="block">
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          Tanque de origem ({origemPhase ? PHASE_LABELS[origemPhase] : ''})
+                        </span>
+                        {tanquesOrigem.length === 0 ? (
+                          <p className="mt-1 rounded-md border border-dashed border-border px-2 py-2 text-xs text-muted-foreground">
+                            Nenhum tanque em {origemPhase ? PHASE_LABELS[origemPhase] : 'origem'}{' '}
+                            disponível.
+                          </p>
+                        ) : (
+                          <Select
+                            value={origemTankId != null ? String(origemTankId) : ''}
+                            onValueChange={(v) => setOrigemTankId(Number(v))}
+                          >
+                            <SelectTrigger className="mt-1 h-9 w-full focus-visible:border-brand focus-visible:ring-brand/20">
+                              <SelectValue>
+                                <span className="truncate text-sm">
+                                  {origemTankId != null
+                                    ? `Tanque ${origemTankId.toString().padStart(2, '0')}`
+                                    : 'Selecione'}
+                                </span>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {tanquesOrigem.map((t) => {
+                                const s = saldoDoTanque(t.id, movimentacoes);
+                                return (
+                                  <SelectItem key={t.id} value={String(t.id)}>
+                                    Tanque {t.id.toString().padStart(2, '0')} ·{' '}
+                                    {s.toLocaleString('pt-BR')} un
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                      {saldoOrigem != null && (
+                        <div className="flex flex-col justify-end rounded-md border border-border bg-muted/30 px-3 py-2">
+                          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Saldo na origem
+                          </span>
+                          <span className="text-sm font-bold tabular-nums text-foreground">
+                            {saldoOrigem.toLocaleString('pt-BR')} un
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div
+                    className={
+                      isTransferPhase
+                        ? 'grid grid-cols-2 gap-2 sm:grid-cols-4'
+                        : 'grid grid-cols-2 gap-2 sm:grid-cols-4'
+                    }
+                  >
+                    <label className="col-span-2 block sm:col-span-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        Quantidade (un)
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={inclusaoQtd}
+                        onChange={(e) => setInclusaoQtd(e.target.value.replace(/\D/g, ''))}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+                      />
+                      {isTransferPhase &&
+                        saldoOrigem != null &&
+                        inclusaoQtdNum > saldoOrigem && (
+                          <span className="mt-1 block text-[10px] text-red-600">
+                            Acima do saldo da origem
+                          </span>
+                        )}
+                    </label>
+                    <div className="block">
+                      <span className="text-[11px] font-medium text-muted-foreground">Mês</span>
+                      <Select
+                        value={String(inclusaoMes)}
+                        onValueChange={(v) => setInclusaoMes(Number(v))}
+                      >
+                        <SelectTrigger className="mt-1 h-9 w-full focus-visible:border-brand focus-visible:ring-brand/20">
+                          <SelectValue>
+                            <span className="truncate text-sm">
+                              {MONTH_LABELS[inclusaoMes - 1]}
+                            </span>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTH_LABELS.map((label, i) => (
+                            <SelectItem key={label} value={String(i + 1)}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-muted-foreground">Ano</span>
+                      <input
+                        type="number"
+                        min={1900}
+                        max={3000}
+                        step={1}
+                        value={inclusaoAno}
+                        onChange={(e) =>
+                          setInclusaoAno(Math.floor(Number(e.target.value) || now.getFullYear()))
+                        }
+                        className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+                      />
+                    </label>
+                    <div className="col-span-2 flex items-end sm:col-span-1">
+                      <Button
+                        type="submit"
+                        disabled={!podeSubmeter}
+                        className="h-9 w-full rounded-md bg-brand text-sm font-semibold text-brand-foreground shadow-sm hover:bg-brand/90 disabled:opacity-50"
+                      >
+                        {isTransferPhase ? (
+                          <>
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                            Transferir
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3.5 w-3.5" />
+                            Incluir
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  {tank.phase === 'engorda' && (
+                    <p className="text-[11px] leading-snug text-muted-foreground">
+                      O saldo da engorda reduz com a <span className="font-medium text-foreground/80">venda de peixe</span> em Custos (abate vinculado ao tanque).
+                    </p>
+                  )}
+                </div>
+              </form>
+
               <MetricFieldsList
                 fields={capacityFields}
                 phase={tank.phase}
@@ -529,6 +791,8 @@ export default function TankDetailPanel({
                 onEditChange={updateQuickEditInputValue}
                 onEditBlur={handleInlineBlur}
                 onEditKeyDown={handleInlineKeyDown}
+                editableTitle="Parâmetros do lote"
+                computedTitle="Capacidade calculada"
               />
             </div>
 
@@ -544,109 +808,13 @@ export default function TankDetailPanel({
                 onEditChange={updateQuickEditInputValue}
                 onEditBlur={handleInlineBlur}
                 onEditKeyDown={handleInlineKeyDown}
+                editableTitle="Conversão alimentar"
+                computedTitle="Consumo de ração"
               />
-            </div>
-
-            {/* Movimentações */}
-            <div>
-              <SectionTitle
-                action={
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleQuickEditSave();
-                      setIsMovDialogOpen(true);
-                    }}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground transition-colors hover:bg-brand/90"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Registrar
-                  </button>
-                }
-              >
-                Movimentações
-              </SectionTitle>
-
-              {extrato.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center text-xs text-muted-foreground">
-                  Nenhuma movimentação registrada. Use “Registrar” para povoar, ajustar ou
-                  transferir peixes.
-                </p>
-              ) : (
-                <ul className="overflow-hidden rounded-xl border border-foreground/30 divide-y divide-border/60">
-                  {extrato.map(({ mov, saldo }) => {
-                    const isSaida = mov.direcao === 'saida';
-                    return (
-                      <li
-                        key={mov.id}
-                        className="group/mov flex items-center gap-3 px-3 py-2.5 hover:bg-primary/[0.03]"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="truncate text-sm text-foreground">
-                            {MOVIMENTACAO_TIPO_LABELS[mov.tipo]}
-                            {mov.tipo === 'transferencia' && mov.tankDestino != null && (
-                              <span className="text-muted-foreground">
-                                {' '}
-                                → T{mov.tankDestino.toString().padStart(2, '0')}
-                              </span>
-                            )}
-                          </span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {String(mov.mes).padStart(2, '0')}/{mov.ano}
-                            {mov.descricao ? ` · ${mov.descricao}` : ''}
-                          </span>
-                        </span>
-                        <span className="flex shrink-0 flex-col items-end gap-1">
-                          <span className="text-right leading-none">
-                            <span className="block text-lg font-bold tabular-nums text-foreground">
-                              {saldo.toLocaleString('pt-BR')}
-                            </span>
-                            <span className="mt-0.5 block text-[9px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                              saldo
-                            </span>
-                          </span>
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
-                              isSaida
-                                ? 'bg-red-500/10 text-red-600'
-                                : 'bg-emerald-500/10 text-emerald-600'
-                            )}
-                          >
-                            {isSaida ? '−' : '+'}
-                            {mov.quantidade.toLocaleString('pt-BR')}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (
-                              window.confirm('Excluir esta movimentação? O saldo será recalculado.')
-                            ) {
-                              removeMovimentacao(mov.id);
-                            }
-                          }}
-                          className="shrink-0 rounded-md p-1.5 text-muted-foreground/30 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 group-hover/mov:opacity-100"
-                          title="Excluir movimentação"
-                          aria-label="Excluir movimentação"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
             </div>
           </div>
         )}
       </div>
-
-      <MovimentacaoDialog
-        open={isMovDialogOpen}
-        onClose={() => setIsMovDialogOpen(false)}
-        tank={tank}
-      />
     </div>
   );
 }
