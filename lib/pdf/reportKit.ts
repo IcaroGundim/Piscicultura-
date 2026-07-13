@@ -252,10 +252,11 @@ export function drawDonutChart(
   if (total <= 0) return startY + chartHeight + 4;
 
   // Chart center
-  const cx = x + chartWidth / 2 - 20;
+  const outerR = Math.min(chartWidth, chartHeight) * 0.2;
+  const innerR = outerR * 0.6;
+  // Donut alinhado à esquerda para reservar uma coluna de legenda ampla.
+  const cx = x + outerR + 5;
   const cy = startY + chartHeight / 2 + 4;
-  const outerR = Math.min(chartWidth, chartHeight) * 0.28;
-  const innerR = outerR * 0.55;
 
   // Draw pie segments using many small arcs
   let startAngle = -Math.PI / 2; // Start from top
@@ -306,15 +307,32 @@ export function drawDonutChart(
     );
   }
 
-  // Center text
+  // Center text (encolhe se não couber no furo do donut)
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  const centerText = s(centerLabel);
+  const holeW = innerR * 2 - 1;
+  let centerSize = 7;
+  doc.setFontSize(centerSize);
+  while (centerSize > 4.5 && doc.getTextWidth(centerText) > holeW) {
+    centerSize -= 0.5;
+    doc.setFontSize(centerSize);
+  }
   doc.setTextColor(30, 41, 59);
-  doc.text(s(centerLabel), cx, cy + 1, { align: 'center' });
+  doc.text(centerText, cx, cy + 1, { align: 'center' });
 
-  // Legend on the right
-  const legendX = cx + outerR + 12;
+  // Legend on the right — coluna com largura reservada e truncamento por medição.
+  const legendX = cx + outerR + 8;
+  const textX = legendX + 4;
+  const maxTextW = x + chartWidth - 4 - textX;
   let legendY = startY + 18;
+
+  // Trunca `text` para caber em maxTextW no tamanho/estilo de fonte atual.
+  const fitText = (text: string, maxW: number): string => {
+    if (maxW <= 0 || doc.getTextWidth(text) <= maxW) return text;
+    let t = text;
+    while (t.length > 1 && doc.getTextWidth(t + '...') > maxW) t = t.slice(0, -1);
+    return t + '...';
+  };
 
   slices.forEach((slice) => {
     const pct = ((slice.value / total) * 100).toFixed(1);
@@ -325,19 +343,19 @@ export function drawDonutChart(
 
     // Label
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    doc.text(s(slice.label), legendX + 4, legendY);
+    doc.text(s(fitText(s(slice.label), maxTextW)), textX, legendY);
 
     // Value + percent
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text(s(`${sliceFmt(slice.value)}  (${pct}%)`), legendX + 4, legendY + 4);
+    doc.text(s(fitText(`${sliceFmt(slice.value)}  (${pct}%)`, maxTextW)), textX, legendY + 4);
 
     if (slice.detail) {
-      doc.setFontSize(6);
-      doc.text(s(slice.detail), legendX + 4, legendY + 7.5);
+      doc.setFontSize(5.5);
+      doc.text(s(fitText(s(slice.detail), maxTextW)), textX, legendY + 7.5);
       legendY += 12;
     } else {
       legendY += 9;
