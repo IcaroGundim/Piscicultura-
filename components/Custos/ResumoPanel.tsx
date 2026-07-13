@@ -32,6 +32,10 @@ const TendenciaChart = dynamic(() => import('./charts/TendenciaChart'), {
   ssr: false,
   loading: ChartSkeleton,
 });
+const MargemChart = dynamic(() => import('./charts/MargemChart'), {
+  ssr: false,
+  loading: ChartSkeleton,
+});
 
 export type Granularidade = 'mensal' | 'anual';
 
@@ -131,9 +135,8 @@ export default function ResumoPanel({ lancamentos, granularidade, ano }: ResumoP
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <ResultadoChart data={serie} />
       <ComposicaoChart custo={custoFatias} receita={receitaFatias} />
-      <div className="lg:col-span-2">
-        <TendenciaChart data={serie} legenda={tendenciaLegenda} />
-      </div>
+      <TendenciaChart data={serie} legenda={tendenciaLegenda} />
+      <MargemChart data={serie} legenda={tendenciaLegenda} />
     </div>
   );
 }

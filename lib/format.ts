@@ -6,6 +6,10 @@ export function formatBRL(value: number) {
   });
 }
 
+export function formatPercent(value: number, maximumFractionDigits = 1) {
+  return `${value.toLocaleString('pt-BR', { maximumFractionDigits })}%`;
+}
+
 export function formatBRLCompact(value: number) {
   if (Math.abs(value) >= 1_000_000)
     return `R$ ${(value / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} mi`;
