@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import ConfirmPopover from '@/components/ui/ConfirmPopover';
 import LancamentoDialog from './LancamentoDialog';
 
 const MONTH_LABELS_SHORT = [
@@ -130,10 +131,8 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
   };
 
   const handleRemove = (id: string) => {
-    if (confirm(`Excluir este${tipoAtivo === 'receita' ? 'a receita' : ' lançamento'}?`)) {
-      removeLancamento(id);
-      onChange();
-    }
+    removeLancamento(id);
+    onChange();
   };
 
   const handleExportPdf = async () => {
@@ -324,15 +323,27 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(l.id)}
-                          className="rounded-md p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
-                          title={`Excluir ${tipoLabel}`}
-                          aria-label={`Excluir ${tipoLabel}`}
+                        <ConfirmPopover
+                          variant="destructive"
+                          title={isReceitaAtivo ? 'Excluir receita?' : 'Excluir lançamento?'}
+                          description={
+                            <>
+                              {catLabel} · {MONTH_LABELS_SHORT[l.mes - 1]}/{l.ano} ·{' '}
+                              {formatBRL(totalLancamento(l))}
+                            </>
+                          }
+                          confirmLabel="Excluir"
+                          onConfirm={() => handleRemove(l.id)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                            title={`Excluir ${tipoLabel}`}
+                            aria-label={`Excluir ${tipoLabel}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </ConfirmPopover>
                       </div>
                     </td>
                   </tr>
