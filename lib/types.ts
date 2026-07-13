@@ -144,7 +144,7 @@ export const CATEGORIA_CUSTO_LABELS: Record<CategoriaCusto, string> = {
   racao: 'Ração',
   ferramentas: 'Ferramentas e Maquinário',
   sal_grosso: 'Sal grosso',
-  cal: 'Cal',
+  cal: 'Combustível',
   mao_obra: 'Mão de obra',
   outras: 'Outros',
 };

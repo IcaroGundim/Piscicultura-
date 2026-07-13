@@ -49,7 +49,7 @@ export const CATEGORIA_CUSTO_UNIDADES: Record<CategoriaCusto, string> = {
   racao: 'sc',
   ferramentas: 'un',
   sal_grosso: 'kg',
-  cal: 'kg',
+  cal: 'L',
   mao_obra: 'h',
   outras: 'un',
 };

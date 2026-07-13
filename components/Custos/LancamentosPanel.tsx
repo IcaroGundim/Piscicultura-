@@ -1,14 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBRL } from '@/lib/format';
 import {
   CATEGORIA_CUSTO_LABELS,
   CATEGORIA_RECEITA_LABELS,
+  LOCATION_LABELS,
   type CategoriaLancamento,
   type Lancamento,
+  type LocationKey,
   type TipoLancamento,
 } from '@/lib/types';
 import {
@@ -56,8 +58,10 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
   const addLancamento = useStore((s) => s.addLancamento);
   const updateLancamento = useStore((s) => s.updateLancamento);
   const removeLancamento = useStore((s) => s.removeLancamento);
+  const activeLocation = useStore((s) => s.activeLocation);
 
   const [tipoAtivo, setTipoAtivo] = useState<TipoLancamento>('custo');
+  const [exporting, setExporting] = useState(false);
 
   const anos = useMemo(() => {
     const list = anosDisponiveis(lancamentos);
@@ -96,6 +100,11 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
 
   const totalAno = Object.values(totaisAno).reduce((s, v) => s + v, 0);
 
+  const temDadosDoTipo = useMemo(
+    () => lancamentos.some(tipoAtivo === 'receita' ? isReceita : isCusto),
+    [lancamentos, tipoAtivo]
+  );
+
   const handleTipoChange = (next: TipoLancamento) => {
     setTipoAtivo(next);
     setCategoriaFiltro('todas');
@@ -124,6 +133,24 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
     if (confirm(`Excluir este${tipoAtivo === 'receita' ? 'a receita' : ' lançamento'}?`)) {
       removeLancamento(id);
       onChange();
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { generateFinanceReport } = await import('@/lib/generateFinanceReport');
+      generateFinanceReport({
+        lancamentos,
+        tipo: tipoAtivo,
+        locationName: LOCATION_LABELS[activeLocation as LocationKey],
+      });
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      alert('Erro ao gerar PDF. Tente novamente.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -198,17 +225,37 @@ export default function LancamentosPanel({ lancamentos, onChange }: LancamentosP
             onChange={(v) => setCategoriaFiltro(v as CategoriaLancamento | 'todas')}
           />
         </div>
-        <button
-          type="button"
-          onClick={handleNew}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-brand-foreground',
-            isReceitaAtivo ? 'bg-emerald-600 hover:bg-emerald-600/90' : 'bg-brand hover:bg-brand/90'
-          )}
-        >
-          <Plus className="h-4 w-4" />
-          {novoLabel}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exporting || !temDadosDoTipo}
+            title={
+              !temDadosDoTipo
+                ? `Nenhum${isReceitaAtivo ? 'a receita' : ' lançamento'} para exportar`
+                : `Exportar ${isReceitaAtivo ? 'receitas' : 'custos'} em PDF (todos os anos)`
+            }
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            Exportar PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleNew}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-brand-foreground',
+              isReceitaAtivo ? 'bg-emerald-600 hover:bg-emerald-600/90' : 'bg-brand hover:bg-brand/90'
+            )}
+          >
+            <Plus className="h-4 w-4" />
+            {novoLabel}
+          </button>
+        </div>
       </div>
 
       {/* Tabela */}
