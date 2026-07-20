@@ -20,9 +20,14 @@ const FishCountChart = dynamic(() => import('@/components/Financeiro/FishCountCh
   loading: () => <ChartSkeleton height={400} />,
 });
 
-const FinancialKPIs = dynamic(() => import('@/components/Financeiro/FinancialKPIs'), {
+const TransfersTimeline = dynamic(() => import('@/components/Financeiro/TransfersTimeline'), {
   ssr: false,
-  loading: () => <ChartSkeleton height={500} />,
+  loading: () => <ChartSkeleton height={400} />,
+});
+
+const AdjustmentsHistory = dynamic(() => import('@/components/Financeiro/AdjustmentsHistory'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={300} />,
 });
 
 const TankFinancialTable = dynamic(() => import('@/components/Financeiro/TankFinancialTable'), {
@@ -108,35 +113,32 @@ function DeferredSection({
 export default function FinanceiroPage() {
   return (
     <div className="min-w-0 px-4 py-6 lg:px-6 space-y-6">
+      {/* Custos · Distribuição de Biomassa · Histórico de correções */}
       <ErrorBoundary>
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Charts Column (Left) */}
-          <div className="flex-1 min-w-0 space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2 h-full">
-              <Suspense fallback={<ChartSkeleton />}>
-                <FeedCostChart />
-              </Suspense>
-              <Suspense fallback={<ChartSkeleton />}>
-                <RevenueDistribution />
-              </Suspense>
-            </div>
-          </div>
-
-          {/* KPIs Column (Right) */}
-          <div className="lg:w-96 xl:w-[420px] shrink-0">
-            <Suspense fallback={<ChartSkeleton height={500} />}>
-              <FinancialKPIs />
-            </Suspense>
-          </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Suspense fallback={<ChartSkeleton />}>
+            <FeedCostChart />
+          </Suspense>
+          <Suspense fallback={<ChartSkeleton />}>
+            <RevenueDistribution />
+          </Suspense>
+          <Suspense fallback={<ChartSkeleton height={300} />}>
+            <AdjustmentsHistory />
+          </Suspense>
         </div>
       </ErrorBoundary>
 
-      {/* Fish Count Chart */}
+      {/* Fish Count Chart + Transfers Timeline */}
       <ErrorBoundary>
         <DeferredSection fallback={<ChartSkeleton height={400} />}>
-          <Suspense fallback={<ChartSkeleton height={400} />}>
-            <FishCountChart />
-          </Suspense>
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <Suspense fallback={<ChartSkeleton height={400} />}>
+              <FishCountChart />
+            </Suspense>
+            <Suspense fallback={<ChartSkeleton height={400} />}>
+              <TransfersTimeline />
+            </Suspense>
+          </div>
         </DeferredSection>
       </ErrorBoundary>
 

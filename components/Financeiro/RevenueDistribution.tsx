@@ -80,7 +80,12 @@ export default function RevenueDistribution() {
 
   if (biomassByPhase.length === 0) {
     return (
-      <div className="h-full flex flex-col rounded-2xl border border-border bg-card/90 p-5 shadow-sm">
+      <div className="relative isolate h-full flex flex-col overflow-hidden rounded-2xl border border-border bg-card/90 p-5 shadow-sm">
+        {/* Marca d'água do header */}
+        <Scale
+          aria-hidden
+          className="pointer-events-none absolute -right-4 -top-4 -z-10 h-28 w-28 -rotate-12 text-brand/[0.06]"
+        />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-bold text-foreground">Distribuição de Biomassa</h3>
@@ -92,7 +97,12 @@ export default function RevenueDistribution() {
   }
 
   return (
-    <div className="h-full flex flex-col rounded-2xl border border-border bg-card/90 p-5 shadow-sm">
+    <div className="relative isolate h-full flex flex-col overflow-hidden rounded-2xl border border-border bg-card/90 p-5 shadow-sm">
+      {/* Marca d'água do header */}
+      <Scale
+        aria-hidden
+        className="pointer-events-none absolute -right-4 -top-4 -z-10 h-28 w-28 -rotate-12 text-brand/[0.06]"
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-bold text-foreground">

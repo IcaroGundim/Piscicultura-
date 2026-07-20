@@ -118,7 +118,6 @@ export default function CustosPage() {
             [
               { id: 'lancamentos', label: 'Lançamentos' },
               { id: 'resumo', label: 'Resumo' },
-              { id: 'config', label: 'Configurações' },
             ] as const
           ).map((tab) => (
             <button

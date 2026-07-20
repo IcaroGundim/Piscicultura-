@@ -109,6 +109,8 @@ export default function TopNav() {
         recriaLotes: state.activeRecriaLotes,
         engordaLotes: state.activeEngordaLotes,
         premissas: state.activePremissas,
+        custos: state.activeCustos,
+        movimentacoes: state.activeMovimentacoes,
         locationName: LOCATION_LABELS[state.activeLocation as LocationKey],
       });
     } catch (err) {

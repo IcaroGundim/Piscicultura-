@@ -5,10 +5,12 @@ import type { Tank, BercarioLote, RecriaLote, EngordaLote, TankPhase } from '@/l
 import { PHASE_LABELS } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { saldoDoTanque } from '@/lib/movimentacoes';
+import { CORRECOES_ENDPOINT } from '@/lib/correcoesHistory';
 import PhaseBadge from './PhaseBadge';
 import PhaseChangeMenu from './PhaseChangeMenu';
 import {
   X,
+  Check,
   Pencil,
   Droplets,
   Package,
@@ -76,6 +78,9 @@ export default function TankDetailPanel({
   const [inclusaoMes, setInclusaoMes] = useState(now.getMonth() + 1);
   const [inclusaoAno, setInclusaoAno] = useState(now.getFullYear());
   const [origemTankId, setOrigemTankId] = useState<number | null>(null);
+  const [isEditingSaldo, setIsEditingSaldo] = useState(false);
+  const [saldoDraft, setSaldoDraft] = useState('');
+  const skipSaldoBlurCommitRef = useRef(false);
   const skipBlurCommitRef = useRef(false);
   const skipAreaBlurCommitRef = useRef(false);
   const firstPhaseButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -92,6 +97,7 @@ export default function TankDetailPanel({
   const addEngordaLote = useStore((s) => s.addEngordaLote);
   const allTanks = useStore((s) => s.activeTanks);
   const movimentacoes = useStore((s) => s.activeMovimentacoes);
+  const activeLocation = useStore((s) => s.activeLocation);
 
   const saldoAtual = useMemo(
     () => saldoDoTanque(tank.id, movimentacoes),
@@ -329,6 +335,12 @@ export default function TankDetailPanel({
     setPhaseSubfaseDraft(tank.subfase ?? '');
   }, [tank.id, tank.subfase]);
 
+  // Ao trocar de tanque, fecha a edição rápida de saldo.
+  useEffect(() => {
+    setIsEditingSaldo(false);
+    setSaldoDraft('');
+  }, [tank.id]);
+
   useEffect(() => {
     if (!isAreaEditing) {
       setAreaDraft(tank.area_m2.toString());
@@ -459,6 +471,80 @@ export default function TankDetailPanel({
       });
     }
     setInclusaoQtd('');
+  };
+
+  // Correção de saldo: edição direta do total. A diferença vira uma
+  // movimentação de `ajuste` (entrada se subiu, saída se baixou), registrando
+  // o antes → depois na descrição para o histórico.
+  const openSaldoEdit = () => {
+    setSaldoDraft(String(saldoAtual));
+    setIsEditingSaldo(true);
+  };
+
+  const commitSaldoEdit = () => {
+    const novo = Math.max(0, Math.floor(Number(saldoDraft.replace(/\D/g, '')) || 0));
+    const delta = novo - saldoAtual;
+    if (delta !== 0 && tank.phase !== 'vazio') {
+      handleQuickEditSave();
+      const ano = now.getFullYear();
+      const mes = now.getMonth() + 1;
+      const descricao = `Correção de saldo: ${saldoAtual.toLocaleString('pt-BR')} → ${novo.toLocaleString('pt-BR')}`;
+
+      // 1) ajuste no estado (altera o saldo do tanque e é autossalvo no blob).
+      addMovimentacao({
+        tankId: tank.id,
+        tipo: 'ajuste',
+        direcao: delta > 0 ? 'entrada' : 'saida',
+        quantidade: Math.abs(delta),
+        ano,
+        mes,
+        faseTanque: tank.phase,
+        descricao,
+      });
+
+      // 2) registro append-only na tabela separada do histórico de correções.
+      void fetch(CORRECOES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: activeLocation,
+          tankId: tank.id,
+          direcao: delta > 0 ? 'entrada' : 'saida',
+          quantidade: Math.abs(delta),
+          saldoAntes: saldoAtual,
+          saldoDepois: novo,
+          ano,
+          mes,
+          descricao,
+        }),
+      }).catch((err) => console.error('Falha ao registrar correção no histórico:', err));
+    }
+    setIsEditingSaldo(false);
+  };
+
+  const cancelSaldoEdit = () => {
+    setIsEditingSaldo(false);
+    setSaldoDraft('');
+  };
+
+  const handleSaldoKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      skipSaldoBlurCommitRef.current = true;
+      commitSaldoEdit();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      skipSaldoBlurCommitRef.current = true;
+      cancelSaldoEdit();
+    }
+  };
+
+  const handleSaldoBlur = () => {
+    if (skipSaldoBlurCommitRef.current) {
+      skipSaldoBlurCommitRef.current = false;
+      return;
+    }
+    commitSaldoEdit();
   };
 
   const renderPeriodoEdit = () => {
@@ -628,15 +714,59 @@ export default function TankDetailPanel({
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-foreground">
                     {movimentoLabel}
                   </p>
-                  <div className="flex items-center gap-1.5 rounded-lg border border-white/80 bg-white px-2.5 py-1 shadow-sm">
-                    <Fish className="h-3.5 w-3.5 text-brand" />
-                    <span className="text-sm font-bold tabular-nums text-brand">
-                      {saldoAtual.toLocaleString('pt-BR')}
-                    </span>
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-brand/70">
-                      saldo
-                    </span>
-                  </div>
+                  {isEditingSaldo ? (
+                    <div className="flex items-center gap-1 rounded-lg border border-white bg-white px-2 py-1 shadow-sm ring-2 ring-brand/30">
+                      <Fish className="h-3.5 w-3.5 shrink-0 text-brand" />
+                      <input
+                        autoFocus
+                        type="text"
+                        inputMode="numeric"
+                        value={saldoDraft}
+                        onChange={(e) => setSaldoDraft(e.target.value.replace(/\D/g, ''))}
+                        onKeyDown={handleSaldoKeyDown}
+                        onBlur={handleSaldoBlur}
+                        aria-label="Editar saldo total"
+                        className="w-20 bg-transparent text-sm font-bold tabular-nums text-brand outline-none"
+                      />
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={commitSaldoEdit}
+                        aria-label="Confirmar novo saldo"
+                        className="rounded p-0.5 text-emerald-600 transition-colors hover:bg-emerald-50"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={cancelSaldoEdit}
+                        aria-label="Cancelar edição"
+                        className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 rounded-lg border border-white/80 bg-white px-2.5 py-1 shadow-sm">
+                      <Fish className="h-3.5 w-3.5 text-brand" />
+                      <span className="text-sm font-bold tabular-nums text-brand">
+                        {saldoAtual.toLocaleString('pt-BR')}
+                      </span>
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-brand/70">
+                        saldo
+                      </span>
+                      <button
+                        type="button"
+                        onClick={openSaldoEdit}
+                        aria-label="Corrigir saldo"
+                        title="Corrigir saldo"
+                        className="ml-0.5 rounded p-0.5 text-brand/60 transition-colors hover:bg-brand/10 hover:text-brand"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2 bg-card p-3 sm:p-4">
                   {isTransferPhase && (

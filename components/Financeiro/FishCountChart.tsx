@@ -101,35 +101,36 @@ export default function FishCountChart() {
   })();
 
   return (
-    <div className="rounded-2xl border border-border bg-card/90 p-4 shadow-sm shadow-blue-950/5 backdrop-blur-sm sm:p-5">
+    <div className="relative isolate overflow-hidden rounded-2xl border border-border bg-card/90 p-4 shadow-sm shadow-blue-950/5 backdrop-blur-sm sm:p-5">
+      {/* Marca d'água do header */}
+      <Fish
+        aria-hidden
+        className="pointer-events-none absolute -right-4 -top-4 -z-10 h-28 w-28 -rotate-12 text-brand/[0.06]"
+      />
       {/* Header */}
       <div className="flex flex-col gap-3 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 border border-blue-100">
-              <metricConfig.icon className="h-4 w-4 text-blue-600" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-slate-800">
-                Dados por Tanque
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {subtitleText}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-slate-800">
+              Dados por Tanque
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {subtitleText}
+            </p>
           </div>
 
           {/* Phase Selector */}
-          <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50/80 p-0.5 sm:w-auto sm:grid-cols-4">
+          <div className="grid w-full grid-cols-2 gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5 sm:inline-flex sm:w-auto">
             {FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
+                type="button"
                 onClick={() => setFilter(opt.value)}
                 className={cn(
-                  'min-h-[36px] min-w-0 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-200 sm:px-3',
+                  'min-h-[36px] min-w-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-0',
                   filter === opt.value
-                    ? 'bg-white text-slate-800 shadow-sm border border-slate-200/70'
-                    : 'text-slate-500 hover:text-slate-700 border border-transparent'
+                    ? 'bg-brand text-brand-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {opt.label}
@@ -139,22 +140,23 @@ export default function FishCountChart() {
         </div>
 
         {/* Metric Selector */}
-        <div className="grid grid-cols-3 gap-1.5 sm:flex sm:items-center">
+        <div className="inline-grid w-fit grid-cols-3 gap-0.5 self-start rounded-lg border border-border bg-muted/40 p-0.5 sm:inline-flex sm:w-auto">
           {METRIC_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isActive = metric === opt.value;
             return (
               <button
                 key={opt.value}
+                type="button"
                 onClick={() => setMetric(opt.value)}
                 className={cn(
-                  'flex min-h-[36px] min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-all duration-200 sm:px-3',
+                  'flex min-h-[36px] min-w-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-0',
                   isActive
-                    ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
-                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700'
+                    ? 'bg-brand text-brand-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-blue-600' : 'text-slate-400')} />
+                <Icon className={cn('h-3.5 w-3.5', isActive ? 'text-brand-foreground' : 'text-muted-foreground')} />
                 <span className="min-w-0 truncate">{opt.label}</span>
               </button>
             );

@@ -39,8 +39,13 @@ export default function TankFinancialTable() {
   }, [activeTanks]);
 
   return (
-    <div className="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-border bg-muted/30">
+    <div className="relative isolate rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
+      {/* Marca d'água do header */}
+      <Fish
+        aria-hidden
+        className="pointer-events-none absolute -right-4 -top-4 -z-10 h-28 w-28 -rotate-12 text-brand/[0.06]"
+      />
+      <div className="relative px-5 py-4 border-b border-border bg-muted/30">
         <h3 className="text-sm font-bold text-foreground">
           Detalhamento por Tanque
         </h3>

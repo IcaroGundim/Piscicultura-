@@ -68,8 +68,8 @@ export default function TankPopover() {
             type="button"
             className={cn(
               'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 min-h-[40px]',
-              'bg-primary/10 text-primary border border-primary/20',
-              'hover:bg-primary/15 hover:border-primary/30 hover:shadow-sm hover:shadow-primary/10',
+              'bg-[#1d5e69] text-white border border-[#165a64]/40 shadow-sm shadow-[#1d5e69]/20',
+              'hover:bg-[#19525c] hover:shadow-md hover:shadow-[#1d5e69]/25',
               'active:scale-95'
             )}
           />

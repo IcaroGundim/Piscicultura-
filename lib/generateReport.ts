@@ -1,10 +1,32 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Tank, BercarioLote, RecriaLote, EngordaLote, Premissas, TankPhase } from './types';
-import { PHASE_LABELS } from './types';
+import type {
+  Tank,
+  BercarioLote,
+  RecriaLote,
+  EngordaLote,
+  Premissas,
+  TankPhase,
+  Custos,
+  Movimentacao,
+} from './types';
+import { PHASE_LABELS, CATEGORIA_CUSTO_LABELS, CATEGORIA_RECEITA_LABELS } from './types';
 import { useStore } from './store';
 import {
+  MESES_CURTOS,
+  CATEGORIA_UNIDADES,
+  receitaTotalAnual,
+  totalDespesasAnuais,
+  composicaoPorCategoria,
+  resumoAnual,
+  isCusto,
+  isReceita,
+  totalLancamento,
+} from './lancamentos';
+import { extratoComSaldo } from './movimentacoes';
+import {
   fmt,
+  fmtBRL,
   s,
   type RGB,
   HEX6,
@@ -21,6 +43,8 @@ interface ReportData {
   recriaLotes: RecriaLote[];
   engordaLotes: EngordaLote[];
   premissas: Premissas;
+  custos: Custos;
+  movimentacoes: Movimentacao[];
   locationName?: string;
 }
 
@@ -45,7 +69,7 @@ function getPhaseRgb(phase: string): RGB {
 // ═══════════════════════════════════════════════════════════════
 
 export function generateReport(data: ReportData) {
-  const { tanks, bercarioLotes, recriaLotes, engordaLotes, premissas } = data;
+  const { tanks, bercarioLotes, recriaLotes, engordaLotes, premissas, custos, movimentacoes } = data;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -54,8 +78,8 @@ export function generateReport(data: ReportData) {
   const contentWidth = pageWidth - marginLeft - marginRight;
   let y = 0;
 
-  // ── Colors (accent = fase Engorda configurada) ──
-  const accentRgb = getPhaseRgb('engorda');
+  // ── Colors (accent = teal do header da pagina, #1d5e69) ──
+  const accentRgb: RGB = [29, 94, 105];
   const accentTextRgb = contrastingTextRgb(accentRgb);
   const darkText: RGB = [30, 41, 59];
   const mutedText: RGB = [100, 116, 139];
@@ -389,6 +413,324 @@ export function generateReport(data: ReportData) {
   y += 2;
   kvLine('Biomassa Total em Engorda', `${fmt(biomassEngorda)} kg`);
   y += 4;
+
+  // ═══════════════════════════════════════════════════════════════
+  // 9. RESULTADO FINANCEIRO (Custos e Receitas)
+  // ═══════════════════════════════════════════════════════════════
+
+  const lancamentos = custos.lancamentos;
+
+  if (lancamentos.length > 0) {
+    const receitaTotal = receitaTotalAnual(lancamentos);
+    const custoTotal = totalDespesasAnuais(lancamentos);
+    const resultado = receitaTotal - custoTotal;
+    const margem = receitaTotal > 0 ? (resultado / receitaTotal) * 100 : 0;
+
+    sectionTitle('Resultado Financeiro');
+    kvLine('Receita Total', fmtBRL(receitaTotal));
+    kvLine('Custo Total', fmtBRL(custoTotal));
+    kvLine(resultado >= 0 ? 'Resultado (lucro)' : 'Resultado (prejuizo)', fmtBRL(resultado));
+    kvLine('Margem Liquida', `${fmt(margem, 1)} %`);
+    y += 4;
+
+    const finChartH = 72;
+    const brl = (n: number) => (Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(1)}k` : n.toFixed(0));
+
+    // Barras: Receita x Custo x Resultado (todos os anos).
+    const receitaRgb: RGB = [16, 185, 129];
+    const custoRgb: RGB = [239, 68, 68];
+    const resultadoRgb: RGB = resultado >= 0 ? accentRgb : [239, 68, 68];
+
+    ensureSpace(finChartH + 6);
+    y = drawBarChart(
+      doc,
+      marginLeft,
+      y,
+      contentWidth,
+      finChartH,
+      [
+        { label: 'Receita', value: receitaTotal, color: receitaRgb },
+        { label: 'Custo', value: custoTotal, color: custoRgb },
+        { label: resultado >= 0 ? 'Lucro' : 'Prejuizo', value: Math.abs(resultado), color: resultadoRgb },
+      ],
+      'Receita x Custo x Resultado',
+      `Margem liquida: ${fmt(margem, 1)}%`,
+      'R$',
+      { bar: brl, axis: brl }
+    );
+
+    // Donuts de composição por categoria (custos / receitas).
+    const composCustos = composicaoPorCategoria(lancamentos, 'custo');
+    const composReceitas = composicaoPorCategoria(lancamentos, 'receita');
+    const donuts: Array<{ title: string; total: number; slices: typeof composCustos }> = [];
+    if (composCustos.length > 0) {
+      donuts.push({ title: 'Composicao de Custos', total: custoTotal, slices: composCustos });
+    }
+    if (composReceitas.length > 0) {
+      donuts.push({ title: 'Composicao de Receitas', total: receitaTotal, slices: composReceitas });
+    }
+
+    if (donuts.length > 0) {
+      ensureSpace(finChartH + 6);
+      const donutW = donuts.length === 2 ? (contentWidth - 4) / 2 : contentWidth;
+      donuts.forEach((d, i) => {
+        drawDonutChart(
+          doc,
+          marginLeft + i * (donutW + 4),
+          y,
+          donutW,
+          finChartH,
+          d.slices.map((f) => ({ label: f.label, value: f.valor, color: hexToRgbTuple(f.color) })),
+          d.title,
+          `Total: ${fmtBRL(d.total)}`,
+          fmtBRL(d.total),
+          (n) => fmtBRL(n)
+        );
+      });
+      y += finChartH + 4;
+    }
+
+    // Tabela: resultado por ano (mais recente primeiro).
+    const porAno = resumoAnual(lancamentos);
+    if (porAno.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: marginLeft, right: marginRight },
+        head: [['Ano', 'Receita', 'Custo', 'Resultado', 'Margem']],
+        body: porAno
+          .slice()
+          .reverse()
+          .map((p) => [
+            String(p.ano),
+            fmtBRL(p.receita),
+            fmtBRL(p.custo),
+            fmtBRL(p.resultado),
+            `${fmt(p.receita > 0 ? (p.resultado / p.receita) * 100 : 0, 1)} %`,
+          ]),
+        columnStyles: {
+          1: { halign: 'right' },
+          2: { halign: 'right' },
+          3: { halign: 'right', fontStyle: 'bold' },
+          4: { halign: 'right' },
+        },
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
+        theme: 'grid',
+      });
+      y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 9b. CUSTOS LANÇADOS (detalhamento por lançamento)
+  // ═══════════════════════════════════════════════════════════════
+
+  const custosLancados = lancamentos
+    .filter(isCusto)
+    .sort((a, b) => b.ano - a.ano || a.mes - b.mes || a.id.localeCompare(b.id));
+
+  if (custosLancados.length > 0) {
+    const totalCustosLancados = custosLancados.reduce((acc, l) => acc + totalLancamento(l), 0);
+
+    sectionTitle('Custos Lancados');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginLeft, right: marginRight },
+      head: [['Periodo', 'Categoria', 'Descricao', 'Qtd', 'Preco un.', 'Total']],
+      body: custosLancados.map((l) => [
+        `${MESES_CURTOS[l.mes - 1] ?? '-'}/${l.ano}`,
+        s(CATEGORIA_CUSTO_LABELS[l.categoria as keyof typeof CATEGORIA_CUSTO_LABELS] ?? l.categoria),
+        s(l.descricao || '-'),
+        `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${
+          CATEGORIA_UNIDADES[l.categoria] ?? ''
+        }`.trim(),
+        fmtBRL(l.precoUnitario),
+        fmtBRL(totalLancamento(l)),
+      ]),
+      foot: [['', '', '', '', 'TOTAL', fmtBRL(totalCustosLancados)]],
+      columnStyles: {
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+        5: { halign: 'right', fontStyle: 'bold' },
+      },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+      footStyles: {
+        fillColor: mixWithWhite(accentRgb, 0.2),
+        textColor: darkText,
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'right',
+      },
+      alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 9c. RECEITAS LANÇADAS (detalhamento por lançamento)
+  // ═══════════════════════════════════════════════════════════════
+
+  const receitasLancadas = lancamentos
+    .filter(isReceita)
+    .sort((a, b) => b.ano - a.ano || a.mes - b.mes || a.id.localeCompare(b.id));
+
+  if (receitasLancadas.length > 0) {
+    const totalReceitasLancadas = receitasLancadas.reduce((acc, l) => acc + totalLancamento(l), 0);
+
+    sectionTitle('Receitas Lancadas');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginLeft, right: marginRight },
+      head: [['Periodo', 'Categoria', 'Descricao', 'Qtd', 'Preco un.', 'Total']],
+      body: receitasLancadas.map((l) => [
+        `${MESES_CURTOS[l.mes - 1] ?? '-'}/${l.ano}`,
+        s(CATEGORIA_RECEITA_LABELS[l.categoria as keyof typeof CATEGORIA_RECEITA_LABELS] ?? l.categoria),
+        s(l.descricao || '-'),
+        `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${
+          CATEGORIA_UNIDADES[l.categoria] ?? ''
+        }`.trim(),
+        fmtBRL(l.precoUnitario),
+        fmtBRL(totalLancamento(l)),
+      ]),
+      foot: [['', '', '', '', 'TOTAL', fmtBRL(totalReceitasLancadas)]],
+      columnStyles: {
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+        5: { halign: 'right', fontStyle: 'bold' },
+      },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+      footStyles: {
+        fillColor: mixWithWhite(accentRgb, 0.2),
+        textColor: darkText,
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'right',
+      },
+      alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 10. MOVIMENTAÇÕES DE PEIXES (Inclusões e Transferências)
+  // ═══════════════════════════════════════════════════════════════
+
+  const periodoMov = (m: Movimentacao) => `${MESES_CURTOS[m.mes - 1] ?? '-'}/${m.ano}`;
+
+  const inclusoes = movimentacoes
+    .filter((m) => m.tipo === 'povoamento' && m.direcao === 'entrada')
+    .sort((a, b) => b.ano - a.ano || b.mes - a.mes);
+
+  const transferencias = movimentacoes
+    .filter((m) => m.tipo === 'transferencia' && m.direcao === 'saida' && m.tankDestino != null)
+    .sort((a, b) => b.ano - a.ano || b.mes - a.mes);
+
+  if (inclusoes.length > 0) {
+    sectionTitle('Inclusoes de Peixes');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginLeft, right: marginRight },
+      head: [['Periodo', 'Tanque', 'Fase', 'Peixes', 'Descricao']],
+      body: inclusoes.map((m) => [
+        periodoMov(m),
+        `T${m.tankId.toString().padStart(2, '0')}`,
+        s(m.faseTanque ? PHASE_LABELS[m.faseTanque] : '-'),
+        fmt(m.quantidade),
+        s(m.descricao || '-'),
+      ]),
+      columnStyles: { 3: { halign: 'right' } },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
+  }
+
+  if (transferencias.length > 0) {
+    sectionTitle('Transferencias entre Tanques');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginLeft, right: marginRight },
+      head: [['Periodo', 'Origem', 'Destino', 'Fases', 'Peixes', 'Descricao']],
+      body: transferencias.map((m) => [
+        periodoMov(m),
+        `T${m.tankId.toString().padStart(2, '0')}`,
+        `T${(m.tankDestino ?? 0).toString().padStart(2, '0')}`,
+        s(
+          `${m.faseTanque ? PHASE_LABELS[m.faseTanque] : '-'} > ${
+            m.faseDestino ? PHASE_LABELS[m.faseDestino] : '-'
+          }`
+        ),
+        fmt(m.quantidade),
+        s(m.descricao || '-'),
+      ]),
+      columnStyles: { 4: { halign: 'right' } },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 11. HISTÓRICO DE CORREÇÕES (ajustes de saldo)
+  // ═══════════════════════════════════════════════════════════════
+
+  const tankIdsComAjuste = new Set(
+    movimentacoes.filter((m) => m.tipo === 'ajuste').map((m) => m.tankId)
+  );
+  const ajusteEvents: Array<{ mov: Movimentacao; saldoAntes: number; saldoDepois: number }> = [];
+  for (const tankId of tankIdsComAjuste) {
+    const extrato = extratoComSaldo(tankId, movimentacoes);
+    extrato.forEach((entry, i) => {
+      if (entry.mov.tipo !== 'ajuste') return;
+      ajusteEvents.push({
+        mov: entry.mov,
+        saldoAntes: i > 0 ? extrato[i - 1].saldo : 0,
+        saldoDepois: entry.saldo,
+      });
+    });
+  }
+  ajusteEvents.sort(
+    (a, b) => b.mov.ano - a.mov.ano || b.mov.mes - a.mov.mes || a.mov.tankId - b.mov.tankId
+  );
+
+  if (ajusteEvents.length > 0) {
+    sectionTitle('Historico de Correcoes');
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginLeft, right: marginRight },
+      head: [['Periodo', 'Tanque', 'Ajuste', 'Saldo antes', 'Saldo depois', 'Descricao']],
+      body: ajusteEvents.map((ev) => {
+        const delta = ev.saldoDepois - ev.saldoAntes;
+        return [
+          periodoMov(ev.mov),
+          `T${ev.mov.tankId.toString().padStart(2, '0')}`,
+          `${delta >= 0 ? '+' : '-'}${fmt(Math.abs(delta))}`,
+          fmt(ev.saldoAntes),
+          fmt(ev.saldoDepois),
+          s(ev.mov.descricao || '-'),
+        ];
+      }),
+      columnStyles: {
+        2: { halign: 'right', fontStyle: 'bold' },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+      },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: accentRgb, textColor: accentTextRgb, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: mixWithWhite(accentRgb, 0.1) },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 8 : y + 20;
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // FOOTER
