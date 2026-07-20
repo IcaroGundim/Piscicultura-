@@ -48,7 +48,7 @@ export const CATEGORIAS_LANCAMENTO: CategoriaCusto[] = CATEGORIAS_CUSTO;
 export const CATEGORIA_CUSTO_UNIDADES: Record<CategoriaCusto, string> = {
   racao: 'sc',
   ferramentas: 'un',
-  sal_grosso: 'kg',
+  sal_grosso: 'un',
   cal: 'L',
   mao_obra: 'h',
   outras: 'un',

@@ -143,7 +143,7 @@ export const MOVIMENTACAO_TIPO_LABELS: Record<MovimentacaoTipo, string> = {
 export const CATEGORIA_CUSTO_LABELS: Record<CategoriaCusto, string> = {
   racao: 'Ração',
   ferramentas: 'Ferramentas e Maquinário',
-  sal_grosso: 'Sal grosso',
+  sal_grosso: 'Lote de Alevinos',
   cal: 'Combustível',
   mao_obra: 'Mão de obra',
   outras: 'Outros',
